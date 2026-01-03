@@ -5,6 +5,7 @@ os.chdir(ROOT_DIR)
 sys.path.append(str(ROOT_DIR / 'code'))
 from settings import *
 from level import Level
+from title_screen import TitleScreen
 
 
 class Game:
@@ -13,7 +14,11 @@ class Game:
 		self.screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
 		pygame.display.set_caption("Tzeri's Garden")
 		self.clock = pygame.time.Clock()
-		self.level = Level()
+
+		# start with title screen
+		self.title_screen = TitleScreen()
+		self.level = None
+		self.state = 'title'  # 'title' or 'playing'
 
 	def run(self):
 		while True:
@@ -23,7 +28,20 @@ class Game:
 					sys.exit()
   
 			dt = self.clock.tick() / 1000
-			self.level.run(dt)
+
+			# Title state
+			if self.state == 'title':
+				self.title_screen.update(dt)
+				self.title_screen.draw()
+				if self.title_screen.done:
+					# create the level and switch state
+					self.level = Level()
+					self.state = 'playing'
+
+			# Playing state
+			else:
+				self.level.run(dt)
+
 			pygame.display.update()
 
 if __name__ == '__main__':
