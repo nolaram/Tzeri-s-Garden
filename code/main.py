@@ -1,6 +1,11 @@
-import pygame, sys
+import pygame, sys, os
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+os.chdir(ROOT_DIR)
+sys.path.append(str(ROOT_DIR / 'code'))
 from settings import *
 from level import Level
+
 
 class Game:
 	def __init__(self):
