@@ -166,6 +166,8 @@ class Level:
 
 		# transition overlay
 		if self.player.sleep:
+			if not self.transition.stack:
+				self.transition.add_transition()
 			self.transition.play()
 
 class CameraGroup(pygame.sprite.Group):
