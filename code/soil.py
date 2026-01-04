@@ -31,9 +31,9 @@ class Plant(pygame.sprite.Sprite):
 		# plant growing 
 		self.age = 0
 		self.max_age = len(self.frames) - 1
-		self.grow_speed = GROW_SPEED[plant_type]
+		self.grow_speed = GROW_SPEED.get(plant_type, 0.5)
 		self.harvestable = False
-
+		
 		# sprite setup
 		self.image = self.frames[self.age]
 		self.y_offset = -16 if plant_type == 'corn' else -8
