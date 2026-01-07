@@ -16,6 +16,9 @@ PLAYER_TOOL_OFFSET = {
 	'down': Vector2(0,50)
 }
 
+PLAYER_REACH_LIMIT = 150
+
+
 LAYERS = {
 	'water': 0,
 	'ground': 1,

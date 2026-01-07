@@ -152,6 +152,9 @@ class Level:
 		self.display_surface.fill('black')
 		self.all_sprites.custom_draw(self.player)
 		
+		# Update player's knowledge about camera offset to make spatial mouse control possible
+		self.player.offset = self.all_sprites.offset
+		
 		# updates
 		if self.shop_active:
 			self.menu.update()
