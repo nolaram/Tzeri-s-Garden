@@ -13,7 +13,8 @@ from menu import Menu
 
 class Level:
 	def __init__(self):
-
+		pygame.mouse.set_visible(False)
+		self.cursor_surf = pygame.image.load('graphics/cursor.png').convert_alpha()
 		# get the display surface
 		self.display_surface = pygame.display.get_surface()
 
@@ -174,6 +175,7 @@ class Level:
 				self.transition.add_transition()
 			self.transition.play()
 
+		self.draw_cursor()
 	def draw_selection_box(self):
 		mouse_pos = pygame.mouse.get_pos() + self.all_sprites.offset
 		# adding snap logic
@@ -192,6 +194,10 @@ class Level:
 		rect = pygame.Rect(x - self.all_sprites.offset.x, y - self.all_sprites.offset.y, 64, 64)
 		pygame.draw.rect(self.display_surface, rect_color, rect, 3, 2)
 
+	def draw_cursor(self):
+		mouse_pos = pygame.mouse.get_pos()
+		cursor_rect = self.cursor_surf.get_rect(center = mouse_pos)
+		self.display_surface.blit(self.cursor_surf, cursor_rect)
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
@@ -217,4 +223,6 @@ class CameraGroup(pygame.sprite.Group):
 					# 	pygame.draw.rect(self.display_surface,'green',hitbox_rect,5)
 					# 	target_pos = offset_rect.center + PLAYER_TOOL_OFFSET[player.status.split('_')[0]]
 					# 	pygame.draw.circle(self.display_surface,'blue',target_pos,5)
+
+			
 
