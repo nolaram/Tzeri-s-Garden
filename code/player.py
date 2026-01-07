@@ -169,6 +169,14 @@ class Player(pygame.sprite.Sprite):
 					# cancel logic to only activate when within PLAYER_REACH_LIMIT
 					if distance <= PLAYER_REACH_LIMIT:
 						use_tool= True
+
+						player_to_mouse = mouse_world_pos - pygame.math.Vector2(self.rect.center)
+						if abs(player_to_mouse.x) > abs(player_to_mouse.y):
+							self.status = 'right' if player_to_mouse.x > 0 else 'left'
+						else:
+							self.status = 'down' if player_to_mouse.y > 0 else 'up'
+
+
 					else: 
 						use_tool = True
 					if use_tool:

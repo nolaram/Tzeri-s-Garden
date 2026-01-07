@@ -174,6 +174,24 @@ class Level:
 				self.transition.add_transition()
 			self.transition.play()
 
+	def draw_selection_box(self):
+		mouse_pos = pygame.mouse.get_pos() + self.all_sprites.offset
+		# adding snap logic
+		x = (mouse_pos.x // 64)	* 64
+		y = (mouse_pos.y // 64) * 64
+
+		# distance check for color
+		player_center = pygame.math.Vector2(self.player.rect.center)
+		tile_center = pygame.math.Vector2(x + 32, y +32)
+
+		# PLAYER_REACH_LIMIT 
+		if player_center.distance_to(tile_center) < PLAYER_REACH_LIMIT:
+			rect_color = 'white'
+		else:
+			rect_color = 'red'
+		rect = pygame.Rect(x - self.all_sprites.offset.x, y - self.all_sprites.offset.y, 64, 64)
+		pygame.draw.rect(self.display_surface, rect_color, rect, 3, 2)
+
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
@@ -199,3 +217,4 @@ class CameraGroup(pygame.sprite.Group):
 					# 	pygame.draw.rect(self.display_surface,'green',hitbox_rect,5)
 					# 	target_pos = offset_rect.center + PLAYER_TOOL_OFFSET[player.status.split('_')[0]]
 					# 	pygame.draw.circle(self.display_surface,'blue',target_pos,5)
+
