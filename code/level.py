@@ -10,7 +10,6 @@ from soil import SoilLayer
 from sky import Rain, Sky
 from random import randint
 from menu import Menu
-from timer import Timer
 from pause_menu import PauseMenu
 
 class Level:
@@ -44,7 +43,6 @@ class Level:
 		# pause
 		self.pause = PauseMenu(self.toggle_pause)
 		self.pause_active = False
-		self.pause_timer = Timer(200)
 
 		# music
 		self.success = pygame.mixer.Sound('audio/success.wav')
