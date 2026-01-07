@@ -35,10 +35,10 @@ class PauseMenu:
 		self.how_lines = [
 			"Controls:",
 			"Move: Arrow keys or WASD",
-			"Use tool: SPACE",
+			"Use tool: Mouse Left Click /",
 			"Use seed: Left Ctrl",
 			"Change tool: Q / Change seed: E",
-			"Interact / Enter bed / Talk: RETURN",
+			"Interact / Enter bed / Talk: Enter",
 			"Pause: ESC (this menu)",
 			"Use the mouse to click buttons in menus."
 		]
