@@ -177,13 +177,14 @@ class Player(pygame.sprite.Sprite):
 							self.status = 'down' if player_to_mouse.y > 0 else 'up'
 
 
-					else: 
+				elif keys[pygame.K_SPACE]:
 						use_tool = True
-					if use_tool:
-						self.timers['tool use'].activate()
-						self.direction = pygame.math.Vector2()
-						self.frame_index = 0
-						self.get_target_pos()
+
+				if use_tool:
+					self.timers['tool use'].activate()
+					self.direction = pygame.math.Vector2()
+					self.frame_index = 0
+					self.get_target_pos()
 
 			# change tool
 			if keys[pygame.K_q] and not self.timers['tool switch'].active:
