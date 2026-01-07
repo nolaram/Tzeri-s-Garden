@@ -151,13 +151,42 @@ class Level:
 		self.sky.start_color = [255,255,255]
 
 	def plant_collision(self):
-		if self.soil_layer.plant_sprites:
-			for plant in self.soil_layer.plant_sprites.sprites():
-				if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
-					self.player_add(plant.plant_type)
-					plant.kill()
-					Particle(plant.rect.topleft, plant.image, self.all_sprites, z = LAYERS['main'])
-					self.soil_layer.grid[plant.rect.centery // TILE_SIZE][plant.rect.centerx // TILE_SIZE].remove('P')
+		"""
+		Handles player harvesting plants safely.
+
+		- Adds the harvested plant to the player's inventory
+		- Removes the plant sprite
+		- Cleans the soil grid safely
+		- Creates a particle effect
+		"""
+
+		if not self.soil_layer.plant_sprites:
+			return
+
+		for plant in self.soil_layer.plant_sprites.sprites():
+			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
+				
+				# 1️⃣ Give player the plant
+				self.player_add(plant.plant_type)
+
+				# 2️⃣ Remove the plant sprite
+				plant.kill()
+
+				# 3️⃣ Remove 'P' from the soil grid safely
+				cell_y = plant.rect.centery // TILE_SIZE
+				cell_x = plant.rect.centerx // TILE_SIZE
+
+				# Ensure coordinates are in bounds
+				if 0 <= cell_y < len(self.soil_layer.grid) and 0 <= cell_x < len(self.soil_layer.grid[0]):
+					cell = self.soil_layer.grid[cell_y][cell_x]
+
+					# Remove all 'P' in case multiple entries exist
+					while 'P' in cell:
+						cell.remove('P')
+
+				# 4️⃣ Spawn particle effect
+				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
+
 
 	def run(self, dt, events):
 		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
