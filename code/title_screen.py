@@ -11,6 +11,8 @@ class TitleScreen:
         self.screen_rect = self.display_surface.get_rect()
         self.title_font = pygame.font.Font('font/LycheeSoda.ttf', 72)
         self.subtitle_font = pygame.font.Font('font/LycheeSoda.ttf', 28)
+        self.copyright_font = pygame.font.Font('font/LycheeSoda.ttf', 16)  # adjust size if needed
+        self.copyright_text = "© Credited to Music Owner and Assets Creators"
 
         # load the title image inserted by the user (required)
         if not ASSET_PATH.exists():
@@ -69,9 +71,13 @@ class TitleScreen:
 
         # draw hint if not fading
         if not self.fading:
-            sub_s = self.subtitle_font.render('Press SPACE to start', True, (240, 240, 240))
+            sub_s = self.subtitle_font.render('Press SPACE to start', True, (0, 0, 0))
             sub_rect = sub_s.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
             self.display_surface.blit(sub_s, sub_rect)
+
+        # draw copyright text
+        copyright_surf = self.copyright_font.render(self.copyright_text, True, (0, 0, 0))
+        self.display_surface.blit(copyright_surf, (10, 10))
 
         # draw fade surface
         if self.fade_alpha > 0:

@@ -75,16 +75,22 @@ class Menu:
 
 				# sell
 				if self.index <= self.sell_border:
+					if current_item not in SALE_PRICES:
+						raise KeyError(f"Missing SALE_PRICES entry for {current_item}")
+
 					if self.player.item_inventory[current_item] > 0:
 						self.player.item_inventory[current_item] -= 1
 						self.player.money += SALE_PRICES[current_item]
 
 				# buy
 				else:
+					if current_item not in PURCHASE_PRICES:
+						raise KeyError(f"Missing PURCHASE_PRICES entry for {current_item}")
+
 					seed_price = PURCHASE_PRICES[current_item]
 					if self.player.money >= seed_price:
 						self.player.seed_inventory[current_item] += 1
-						self.player.money -= PURCHASE_PRICES[current_item]
+						self.player.money -= seed_price
 
 		# clamo the values
 		if self.index < 0:
@@ -109,7 +115,7 @@ class Menu:
 
 		# selected
 		if selected:
-			pygame.draw.rect(self.display_surface,'black',bg_rect,4,4)
+			pygame.draw.rect(self.display_surface,'black',bg_rect,4,4)	
 			if self.index <= self.sell_border: # sell
 				pos_rect = self.sell_text.get_rect(midleft = (self.main_rect.left + 150,bg_rect.centery))
 				self.display_surface.blit(self.sell_text,pos_rect)

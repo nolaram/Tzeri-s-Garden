@@ -22,7 +22,8 @@ class Game:
 
 	def run(self):
 		while True:
-			for event in pygame.event.get():
+			events = pygame.event.get()
+			for event in events:
 				if event.type == pygame.QUIT:
 					pygame.quit()
 					sys.exit()
@@ -40,7 +41,7 @@ class Game:
 
 			# Playing state
 			else:
-				self.level.run(dt)
+				self.level.run(dt, events)
 
 			pygame.display.update()
 

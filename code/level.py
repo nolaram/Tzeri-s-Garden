@@ -10,6 +10,7 @@ from soil import SoilLayer
 from sky import Rain, Sky
 from random import randint
 from menu import Menu
+from pause_menu import PauseMenu
 
 class Level:
 	def __init__(self):
@@ -38,6 +39,10 @@ class Level:
 		# shop
 		self.menu = Menu(self.player, self.toggle_shop)
 		self.shop_active = False
+
+		# pause
+		self.pause = PauseMenu(self.toggle_pause)
+		self.pause_active = False
 
 		# music
 		self.success = pygame.mixer.Sound('audio/success.wav')
@@ -117,6 +122,13 @@ class Level:
 
 		self.shop_active = not self.shop_active
 
+	def toggle_pause(self):
+		# ensure shop is closed while pausing
+		if not self.pause_active:
+			self.shop_active = False
+		self.pause_active = not self.pause_active
+		pygame.mouse.set_visible(self.pause_active)
+
 	def reset(self):
 		# plants
 		self.soil_layer.update_plants()
@@ -140,16 +152,53 @@ class Level:
 		self.sky.start_color = [255,255,255]
 
 	def plant_collision(self):
-		if self.soil_layer.plant_sprites:
-			for plant in self.soil_layer.plant_sprites.sprites():
-				if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
-					self.player_add(plant.plant_type)
-					plant.kill()
-					Particle(plant.rect.topleft, plant.image, self.all_sprites, z = LAYERS['main'])
-					self.soil_layer.grid[plant.rect.centery // TILE_SIZE][plant.rect.centerx // TILE_SIZE].remove('P')
+		"""
+		Handles player harvesting plants safely.
 
-	def run(self,dt):
-		
+		- Adds the harvested plant to the player's inventory
+		- Removes the plant sprite
+		- Cleans the soil grid safely
+		- Creates a particle effect
+		"""
+
+		if not self.soil_layer.plant_sprites:
+			return
+
+		for plant in self.soil_layer.plant_sprites.sprites():
+			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
+				
+				# 1️⃣ Give player the plant
+				self.player_add(plant.plant_type)
+
+				# 2️⃣ Remove the plant sprite
+				plant.kill()
+
+				# 3️⃣ Remove 'P' from the soil grid safely
+				cell_y = plant.rect.centery // TILE_SIZE
+				cell_x = plant.rect.centerx // TILE_SIZE
+
+				# Ensure coordinates are in bounds
+				if 0 <= cell_y < len(self.soil_layer.grid) and 0 <= cell_x < len(self.soil_layer.grid[0]):
+					cell = self.soil_layer.grid[cell_y][cell_x]
+
+					# Remove all 'P' in case multiple entries exist
+					while 'P' in cell:
+						cell.remove('P')
+
+				# 4️⃣ Spawn particle effect
+				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
+
+
+	def run(self, dt, events):
+		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
+		filtered_events = []
+		for event in events:
+			# if ESC pressed and pause isn't active yet, open pause and don't forward this event
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.pause_active:
+				self.toggle_pause()
+				continue
+			filtered_events.append(event)
+
 		# drawing logic
 		self.display_surface.fill('black')
 		self.all_sprites.custom_draw(self.player)
@@ -158,7 +207,10 @@ class Level:
 		self.player.offset = self.all_sprites.offset
 		
 		# updates
-		if self.shop_active:
+		if self.pause_active:
+			# let the pause menu handle its events and drawing (use filtered events)
+			self.pause.update(filtered_events)
+		elif self.shop_active:
 			self.menu.update()
 		else:
 			self.all_sprites.update(dt)
@@ -166,7 +218,7 @@ class Level:
 
 		# weather
 		self.overlay.display()
-		if self.raining and not self.shop_active:
+		if self.raining and not (self.shop_active or self.pause_active):
 			self.rain.update()
 		self.sky.display(dt)
 
@@ -176,7 +228,12 @@ class Level:
 				self.transition.add_transition()
 			self.transition.play()
 
+		# draw either custom cursor or let system cursor show while paused
 		self.draw_cursor()
+
+		# draw pause menu on top
+		if self.pause_active:
+			self.pause.draw()
 	def draw_selection_box(self):
 		mouse_pos = pygame.mouse.get_pos() + self.all_sprites.offset
 		# adding snap logic
@@ -196,9 +253,11 @@ class Level:
 		pygame.draw.rect(self.display_surface, rect_color, rect, 3, 2)
 
 	def draw_cursor(self):
-		mouse_pos = pygame.mouse.get_pos()
-		cursor_rect = self.cursor_surf.get_rect(center = mouse_pos)
-		self.display_surface.blit(self.cursor_surf, cursor_rect)
+		# only draw custom cursor when OS cursor is hidden (e.g., not paused)
+		if not pygame.mouse.get_visible():
+			mouse_pos = pygame.mouse.get_pos()
+			cursor_rect = self.cursor_surf.get_rect(center = mouse_pos)
+			self.display_surface.blit(self.cursor_surf, cursor_rect)
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()

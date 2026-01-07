@@ -4,6 +4,9 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 TILE_SIZE = 64
 
+# maximum reach distance (pixels) for interacting with tiles
+PLAYER_REACH_LIMIT = 100
+
 # overlay positions 
 OVERLAY_POSITIONS = {
 	'tool' : (40, SCREEN_HEIGHT - 15), 
@@ -15,9 +18,6 @@ PLAYER_TOOL_OFFSET = {
 	'up': Vector2(0,-10),
 	'down': Vector2(0,50)
 }
-
-PLAYER_REACH_LIMIT = 100
-
 
 LAYERS = {
 	'water': 0,
@@ -50,9 +50,16 @@ SALE_PRICES = {
 	'wood': 4,
 	'apple': 2,
 	'corn': 10,
-	'tomato': 20
+	'tomato': 20,
+    'moon_melon': 25,
+    'pumpkin': 20,
+	'cactus': 20
+    
 }
 PURCHASE_PRICES = {
 	'corn': 4,
-	'tomato': 5
+	'tomato': 5,
+    'moon_melon': 15,
+    'pumpkin': 10,
+    'cactus': 10
 }
