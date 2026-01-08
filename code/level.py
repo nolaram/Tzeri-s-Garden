@@ -27,7 +27,7 @@ class Level:
 
 		self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites)
 		self.setup()
-		self.overlay = Overlay(self.player)
+		self.overlay = Overlay(self.player, show_objective=True)
 		self.transition = TransitionStack(self.reset, self.player)
 
 		# sky
@@ -217,7 +217,7 @@ class Level:
 			self.plant_collision()
 
 		# weather
-		self.overlay.display()
+		self.overlay.display(dt)
 		if self.raining and not (self.shop_active or self.pause_active):
 			self.rain.update()
 		self.sky.display(dt)
