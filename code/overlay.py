@@ -19,10 +19,11 @@ class Overlay:
 		except Exception:
 			self.objective_surf = None
 
-		self.objective_font = pygame.font.Font('font/LycheeSoda.ttf', 18)
+		self.objective_font = pygame.font.Font('font/LycheeSoda.ttf', 20)
 		self.objective_text = "Plant various seeds, grow, and sell them to the Trader"
 		self.show_objective = show_objective
-		self.objective_timer = 6.0
+		self.objective_timer = 10.0
+		self.button_rect = None
 
 	def _wrap_text(self, text, font, max_width):
 		words = text.split(' ')
@@ -40,7 +41,7 @@ class Overlay:
 			lines.append(cur)
 		return lines
 
-	def display(self, dt: float = 0):
+	def display(self, dt: float = 0, events = None):
 
 		# tool
 		tool_surf = self.tools_surf[self.player.selected_tool]
@@ -56,9 +57,9 @@ class Overlay:
 		if self.show_objective and self.objective_surf:
 			self.objective_timer -= dt
 
-			# scale the objective box down to a reasonable size (60% of screen width)
+			# scale the objective box down to a reasonable size (50% of screen width)
 			orig_w, orig_h = self.objective_surf.get_size()
-			target_w = int(SCREEN_WIDTH * 0.6)
+			target_w = int(SCREEN_WIDTH * 0.5)
 			scale = target_w / orig_w if orig_w else 1
 			target_h = int(orig_h * scale)
 			box_surf = pygame.transform.smoothscale(self.objective_surf, (target_w, target_h))
@@ -88,10 +89,11 @@ class Overlay:
 				y += surf.get_height() + 4
 
 			# Dismiss button (placed inside box bottom)
-			button_w, button_h = 120, button_h
+			button_w, button_h = 120, 40
 			button_rect = pygame.Rect(0, 0, button_w, button_h)
 			button_rect.centerx = box_rect.centerx
-			button_rect.bottom = box_rect.bottom - padding
+			button_rect.bottom = box_rect.bottom - padding + 5
+			self.button_rect = button_rect
 
 			mx, my = pygame.mouse.get_pos()
 			hover = button_rect.collidepoint((mx, my))
@@ -103,9 +105,12 @@ class Overlay:
 			self.display_surface.blit(btn_surf, btn_rect)
 
 			# click handling (dismiss on left click)
-			mouse_pressed = pygame.mouse.get_pressed()
-			if mouse_pressed[0] and hover:
-				self.show_objective = False
+			if events is not None:
+				for event in events:
+					if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+						if button_rect.collidepoint(event.pos):
+							self.show_objective = False
+							break
 
 			if self.objective_timer <= 0:
 				self.show_objective = False

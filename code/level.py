@@ -217,7 +217,7 @@ class Level:
 			self.plant_collision()
 
 		# weather
-		self.overlay.display(dt)
+		self.overlay.display(dt, filtered_events)
 		if self.raining and not (self.shop_active or self.pause_active):
 			self.rain.update()
 		self.sky.display(dt)
