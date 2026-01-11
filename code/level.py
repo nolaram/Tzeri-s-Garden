@@ -11,6 +11,7 @@ from sky import Rain, Sky
 from random import randint
 from menu import Menu
 from pause_menu import PauseMenu
+from quest_system import QuestManager
 
 class Level:
 	def __init__(self):
@@ -40,7 +41,6 @@ class Level:
 
 		# Initialize player as None first
 		self.player = None
-		
 		self.soil_layer = None
 		self.setup()
 		if self.current_map_path:
@@ -52,6 +52,9 @@ class Level:
 				self.player.soil_layer = self.soil_layer
 		self.overlay = Overlay(self.player, show_objective=True)
 		self.transition = TransitionStack(self.reset, self.player)
+		# Quest system
+		self.quest_manager = QuestManager(self.player)
+		
 
 		# sky
 		self.rain = Rain(self.all_sprites)
@@ -669,7 +672,8 @@ class Level:
 			
 			# Play stage transition effect
 			self.play_stage_transition()
-			
+			# Update quest for stage progress
+			self.quest_manager.on_stage_progress()
 			# Change stage BEFORE saving data
 			self.cleanse_stage = stage_order[current_index + 1]
 			print(f"\n{'='*50}")
@@ -868,6 +872,9 @@ class Level:
 				# 1️⃣ Give player the plant
 				self.player_add(plant.plant_type)
 
+				# Update quest progress
+				self.quest_manager.on_harvest(plant.plant_type)
+
 				# Add cleanse points based on crop type
 				cleanse_values = {
 					'corn': 5,
@@ -905,6 +912,11 @@ class Level:
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.pause_active:
 				self.toggle_pause()
 				continue
+			# Handle quest reward claiming
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+				if self.quest_manager.active_quest and self.quest_manager.active_quest.completed:
+					self.quest_manager.claim_rewards()
+					continue
 			filtered_events.append(event)
 
 		# drawing logic
@@ -924,6 +936,7 @@ class Level:
 		else:
 			self.all_sprites.update(dt)
 			self.plant_collision()
+			self.quest_manager.update(dt)
 
 		# weather
 		if hasattr(self, 'player'):
@@ -931,6 +944,9 @@ class Level:
 		if self.raining and not (self.shop_active or self.pause_active):
 			self.rain.update()
 		self.sky.display(dt)
+
+		# Quest UI
+		self.quest_manager.draw()
 
 		# Display cleanse progress
 		self.display_cleanse_progress()
