@@ -14,6 +14,7 @@ from pause_menu import PauseMenu
 from quest_system import QuestManager
 from inventory_ui import InventoryUI
 from time_system import TimeSystem
+from energy_system import EnergySystem
 
 class Level:
 	def __init__(self):
@@ -44,6 +45,10 @@ class Level:
 		# Initialize player as None first
 		self.player = None
 		self.soil_layer = None
+
+		# Energy system
+		self.energy_system = EnergySystem()	
+		
 		self.setup()
 		if self.current_map_path:
 			print(f"\n=== Creating Soil Layer ===")
@@ -84,6 +89,8 @@ class Level:
 
 		# Time system
 		self.time_system = TimeSystem()
+
+		
 
 	def setup(self):
 		"""Load ALL layers from the current stage map"""
@@ -568,6 +575,9 @@ class Level:
 									soil_layer=self.soil_layer,
 									toggle_shop=self.toggle_shop
 								)
+								# Set energy system reference
+								self.player.energy_system = self.energy_system	
+
 							else:
 								# Reposition existing player
 								self.player.pos = pygame.math.Vector2(start_pos)
@@ -924,6 +934,9 @@ class Level:
 		# plants
 		self.soil_layer.update_plants()
 
+		# Restore energy
+		self.energy_system.restore_full()
+
 		# soil
 		self.soil_layer.remove_water()
 		self.raining = randint(0,10) > 0
@@ -952,6 +965,9 @@ class Level:
 
 		for plant in self.soil_layer.plant_sprites.sprites():
 			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
+				# Use energy for harvesting
+				if not self.energy_system.use_energy('harvest'):
+					continue  # Not enough energy, skip this harvest
 				
 				# 1️⃣ Give player the plant
 				self.player_add(plant.plant_type)
@@ -1045,6 +1061,7 @@ class Level:
 			self.plant_collision()
 			self.quest_manager.update(dt)
 			self.time_system.update(dt)  # Update time system
+			self.energy_system.update(dt)  # Update energy system
 
 		# weather
 		if hasattr(self, 'player'):
@@ -1062,6 +1079,9 @@ class Level:
 
 		# Display time and day
 		self.time_system.draw()
+
+		# Display energy bar
+		self.energy_system.draw()
 
 		# transition overlay
 		if hasattr(self, 'player') and self.player.sleep:
