@@ -21,7 +21,7 @@ class TimeSystem:
         self.night_start_hour = 20  # 8 PM
         self.night_end_hour = 6     # 6 AM
         
-    def update(self, dt):
+    def update(self, dt, corruption_surge=None):
         """Update time progression"""
         self.time_accumulator += dt
         
@@ -34,6 +34,10 @@ class TimeSystem:
             if self.minute >= 60:
                 self.minute = 0
                 self.hour += 1
+                
+                # Try to trigger corruption surge each hour
+                if corruption_surge:
+                    corruption_surge.try_trigger_surge(self.hour)
                 
                 # Handle hour overflow (new day)
                 if self.hour >= 24:

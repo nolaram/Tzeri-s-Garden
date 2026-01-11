@@ -15,6 +15,7 @@ from quest_system import QuestManager
 from inventory_ui import InventoryUI
 from time_system import TimeSystem
 from energy_system import EnergySystem
+from corruption_surge import CorruptionSurge
 
 class Level:
 	def __init__(self):
@@ -48,7 +49,7 @@ class Level:
 
 		# Energy system
 		self.energy_system = EnergySystem()	
-		
+
 		self.setup()
 		if self.current_map_path:
 			print(f"\n=== Creating Soil Layer ===")
@@ -57,10 +58,14 @@ class Level:
 			# Update player's soil layer reference
 			if self.player:
 				self.player.soil_layer = self.soil_layer
+		# Corruption surge system
+		self.corruption_surge = CorruptionSurge(self.soil_layer)
+
 		self.overlay = Overlay(self.player, show_objective=True)
 		self.transition = TransitionStack(self.reset, self.player)
 		# Quest system
 		self.quest_manager = QuestManager(self.player)
+		
 		
 
 		# sky
@@ -937,6 +942,9 @@ class Level:
 		# Restore energy
 		self.energy_system.restore_full()
 
+		# Reset corruption surge for new day
+		self.corruption_surge.reset_daily()
+
 		# soil
 		self.soil_layer.remove_water()
 		self.raining = randint(0,10) > 0
@@ -964,7 +972,7 @@ class Level:
 			return
 
 		for plant in self.soil_layer.plant_sprites.sprites():
-			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
+			if hasattr(plant, "harvestable") and plant.harvestable and plant.rect.colliderect(self.player.hitbox):
 				# Use energy for harvesting
 				if not self.energy_system.use_energy('harvest'):
 					continue  # Not enough energy, skip this harvest
@@ -1008,6 +1016,9 @@ class Level:
 		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
 		filtered_events = []
 		for event in events:
+
+			self.corruption_surge.handle_report_input(filtered_events)
+
 			# Check for inventory toggle
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
 				self.inventory_active = not self.inventory_active
@@ -1060,8 +1071,9 @@ class Level:
 			self.all_sprites.update(dt)
 			self.plant_collision()
 			self.quest_manager.update(dt)
-			self.time_system.update(dt)  # Update time system
+			self.time_system.update(dt, self.corruption_surge)  # Update time system
 			self.energy_system.update(dt)  # Update energy system
+			self.corruption_surge.update(dt)  # Update corruption surge
 
 		# weather
 		if hasattr(self, 'player'):
@@ -1082,6 +1094,13 @@ class Level:
 
 		# Display energy bar
 		self.energy_system.draw()
+
+		# Display corruption surge effects
+		self.corruption_surge.draw()
+
+		# Display corruption surge report if active
+		self.corruption_surge.draw_report()
+
 
 		# transition overlay
 		if hasattr(self, 'player') and self.player.sleep:
@@ -1168,6 +1187,7 @@ class Level:
 		current_tile_rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 		offset = self.all_sprites.offset
 		pygame.draw.rect(self.display_surface, 'white', current_tile_rect.move(-offset), 3)
+
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
