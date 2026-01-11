@@ -672,14 +672,17 @@ class Level:
 		current_index = stage_order.index(self.cleanse_stage)
 		
 		if current_index < len(stage_order) - 1:
+			# FREEZE PLAYER IMMEDIATELY
+			player_was_sleeping = self.player.sleep
+			self.player.sleep = True  # Prevent player movement during transition
+			
 			# Reset cleanse points to prevent re-triggering
 			self.cleanse_points = 0
 			
-			# Play stage transition effect
-			self.play_stage_transition()
-			# Update quest for stage progress
-			self.quest_manager.on_stage_progress()
-			# Change stage BEFORE saving data
+			# Save player position
+			saved_player_pos = self.player.rect.center
+			
+			# Change stage FIRST
 			self.cleanse_stage = stage_order[current_index + 1]
 			print(f"\n{'='*50}")
 			print(f"FARM PROGRESSED TO: {self.cleanse_stage.upper()}")
@@ -698,79 +701,145 @@ class Level:
 				}
 				saved_plants.append(plant_data)
 
-			# Clear old soil layer completely
-			for sprite in list(self.soil_layer.soil_sprites.sprites()):
-				sprite.kill()
-			for sprite in list(self.soil_layer.water_sprites.sprites()):
-				sprite.kill()
-			for sprite in list(self.soil_layer.plant_sprites.sprites()):
-				sprite.kill()
-
-			# Reload the map with new stage (this creates collision sprites)
-			self.setup()
+			# Play transition with map loading INSIDE
+			self.play_stage_transition_with_loading(saved_grid, saved_plants, saved_player_pos)
 			
-			# NOW create new soil layer for the new map
-			self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, self.current_map_path)
-			self.soil_layer.raining = self.raining
-			
-			# Update player's soil layer reference
-			if self.player:
-				self.player.soil_layer = self.soil_layer
-
-			# Restore the saved soil state to the new grid
-			for y in range(min(len(saved_grid), len(self.soil_layer.grid))):
-				for x in range(min(len(saved_grid[0]), len(self.soil_layer.grid[0]))):
-					# Keep 'F' from new map, but restore 'X', 'W' from old
-					old_cell = saved_grid[y][x]
-					new_cell = self.soil_layer.grid[y][x]
-					
-					# Restore tilled soil
-					if 'X' in old_cell and 'X' not in new_cell:
-						new_cell.append('X')
-					# Restore water
-					if 'W' in old_cell and 'W' not in new_cell:
-						new_cell.append('W')
-
-			# Recreate visual soil sprites
-			self.soil_layer.create_soil_tiles()
-
-			# Restore plants
-			for plant_data in saved_plants:
-				x, y = plant_data['pos']
-				if y < len(self.soil_layer.grid) and x < len(self.soil_layer.grid[0]):
-					# Find the corresponding soil sprite
-					for soil_sprite in self.soil_layer.soil_sprites.sprites():
-						if soil_sprite.rect.x == x * TILE_SIZE and soil_sprite.rect.y == y * TILE_SIZE:
-							# Add 'P' marker back
-							self.soil_layer.grid[y][x].append('P')
-							
-							# Recreate the plant
-							from soil import Plant
-							new_plant = Plant(
-								plant_data['plant_type'],
-								[self.all_sprites, self.soil_layer.plant_sprites, self.collision_sprites],
-								soil_sprite,
-								self.soil_layer.check_watered
-							)
-							# Restore the plant's age
-							new_plant.age = plant_data['age']
-							new_plant.image = new_plant.frames[int(new_plant.age)]
-							new_plant.rect = new_plant.image.get_rect(
-								midbottom=soil_sprite.rect.midbottom + pygame.math.Vector2(0, new_plant.y_offset)
-							)
-							if int(new_plant.age) >= new_plant.max_age:
-								new_plant.harvestable = True
-							break
-
-			# Recreate water sprites if it was raining
-			for sprite in list(self.soil_layer.water_sprites.sprites()):
-				sprite.kill()
-				
-			if self.raining:
-				self.soil_layer.water_all()
+			# UNFREEZE PLAYER (restore original state)
+			self.player.sleep = player_was_sleeping
 			
 			# Show notification
 			print(f"✓ Stage transition complete!")
+
+	def play_stage_transition_with_loading(self, saved_grid, saved_plants, saved_player_pos):
+		"""Play transition and load map during black screen"""
+		fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+		fade_surface.fill((0, 0, 0))
+		
+		# Fade out
+		for alpha in range(0, 255, 15):
+			pygame.event.clear()
+			fade_surface.set_alpha(alpha)
+			self.display_surface.blit(fade_surface, (0, 0))
+			pygame.display.update()
+			pygame.time.delay(30)
+		
+		# BLACK SCREEN - DO ALL LOADING HERE
+		self.display_surface.fill((0, 0, 0))
+		
+		try:
+			font = pygame.font.Font('font/LycheeSoda.ttf', 48)
+			small_font = pygame.font.Font('font/LycheeSoda.ttf', 24)
+		except:
+			font = pygame.font.Font(None, 48)
+			small_font = pygame.font.Font(None, 24)
+		
+		# Show loading text
+		text = "Cleansing the Farm..."
+		text_surf = font.render(text, True, (255, 255, 255))
+		text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+		self.display_surface.blit(text_surf, text_rect)
+		
+		loading_text = "Loading..."
+		loading_surf = small_font.render(loading_text, True, (200, 200, 200))
+		loading_rect = loading_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60))
+		self.display_surface.blit(loading_surf, loading_rect)
+		
+		pygame.display.update()
+		pygame.event.clear()
+		
+		# === DO ALL THE LOADING HERE ===
+		
+		# Clear old soil layer completely
+		for sprite in list(self.soil_layer.soil_sprites.sprites()):
+			sprite.kill()
+		for sprite in list(self.soil_layer.water_sprites.sprites()):
+			sprite.kill()
+		for sprite in list(self.soil_layer.plant_sprites.sprites()):
+			sprite.kill()
+
+		# Reload the map with new stage
+		self.setup()
+		
+		# Restore player position
+		self.player.rect.center = saved_player_pos
+		self.player.pos = pygame.math.Vector2(saved_player_pos)
+		self.player.hitbox.center = self.player.rect.center
+		
+		# Create new soil layer for the new map
+		self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, self.current_map_path)
+		self.soil_layer.raining = self.raining
+		
+		# Update player's soil layer reference
+		if self.player:
+			self.player.soil_layer = self.soil_layer
+
+		# Restore the saved soil state to the new grid
+		for y in range(min(len(saved_grid), len(self.soil_layer.grid))):
+			for x in range(min(len(saved_grid[0]), len(self.soil_layer.grid[0]))):
+				old_cell = saved_grid[y][x]
+				new_cell = self.soil_layer.grid[y][x]
+				
+				if 'X' in old_cell and 'X' not in new_cell:
+					new_cell.append('X')
+				if 'W' in old_cell and 'W' not in new_cell:
+					new_cell.append('W')
+
+		# Recreate visual soil sprites
+		self.soil_layer.create_soil_tiles()
+
+		# Restore plants
+		for plant_data in saved_plants:
+			x, y = plant_data['pos']
+			if y < len(self.soil_layer.grid) and x < len(self.soil_layer.grid[0]):
+				for soil_sprite in self.soil_layer.soil_sprites.sprites():
+					if soil_sprite.rect.x == x * TILE_SIZE and soil_sprite.rect.y == y * TILE_SIZE:
+						self.soil_layer.grid[y][x].append('P')
+						
+						from soil import Plant
+						new_plant = Plant(
+							plant_data['plant_type'],
+							[self.all_sprites, self.soil_layer.plant_sprites, self.collision_sprites],
+							soil_sprite,
+							self.soil_layer.check_watered
+						)
+						new_plant.age = plant_data['age']
+						new_plant.image = new_plant.frames[int(new_plant.age)]
+						new_plant.rect = new_plant.image.get_rect(
+							midbottom=soil_sprite.rect.midbottom + pygame.math.Vector2(0, new_plant.y_offset)
+						)
+						if int(new_plant.age) >= new_plant.max_age:
+							new_plant.harvestable = True
+						break
+
+		# Recreate water sprites if raining
+		for sprite in list(self.soil_layer.water_sprites.sprites()):
+			sprite.kill()
+			
+		if self.raining:
+			self.soil_layer.water_all()
+		
+		# Update quest
+		self.quest_manager.on_stage_progress()
+		
+		# === LOADING COMPLETE ===
+		
+		# Hold black screen for a moment
+		pygame.time.delay(500)
+		pygame.event.clear()
+		
+		# Fade in
+		for alpha in range(255, 0, -15):
+			pygame.event.clear()
+			fade_surface.set_alpha(alpha)
+			self.display_surface.fill('black')
+			self.all_sprites.custom_draw(self.player)
+			self.display_cleanse_progress()
+			self.display_surface.blit(fade_surface, (0, 0))
+			pygame.display.update()
+			pygame.time.delay(30)
+		
+		# Final event clear
+		pygame.event.clear()
 
 	def play_stage_transition(self):
 		"""Play a visual transition when stage changes"""
@@ -780,8 +849,8 @@ class Level:
 		
 		# Fade out
 		for alpha in range(0, 255, 15):
-			# Keep game running in background
-			self.all_sprites.update(0.016)  # Simulate frame
+			# Clear any pending events to prevent player input
+			pygame.event.clear()
 			
 			fade_surface.set_alpha(alpha)
 			self.display_surface.blit(fade_surface, (0, 0))
@@ -793,8 +862,8 @@ class Level:
 		duration = 2500  # 2.5 seconds
 		
 		while pygame.time.get_ticks() - start_time < duration:
-			# Keep game running
-			self.all_sprites.update(0.016)
+			# Clear any pending events
+			pygame.event.clear()
 			
 			# Draw black screen with text
 			self.display_surface.fill((0, 0, 0))
@@ -814,8 +883,8 @@ class Level:
 		
 		# Fade in
 		for alpha in range(255, 0, -15):
-			# Keep game running
-			self.all_sprites.update(0.016)
+			# Clear any pending events
+			pygame.event.clear()
 			
 			fade_surface.set_alpha(alpha)
 			# Redraw game during fade in
@@ -825,6 +894,9 @@ class Level:
 			self.display_surface.blit(fade_surface, (0, 0))
 			pygame.display.update()
 			pygame.time.delay(30)
+
+		# One final clear of events before returning control
+		pygame.event.clear()
 
 	def player_add(self,item):
 		if hasattr(self, 'player'):
