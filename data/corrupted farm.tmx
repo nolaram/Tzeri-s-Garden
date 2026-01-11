@@ -17,8 +17,8 @@
  <tileset firstgid="2087" source="Tilesets/Corrupted Objects.tsx"/>
  <tileset firstgid="4243" source="Tilesets/Corrupted Details.tsx"/>
  <tileset firstgid="4261" source="Tilesets/Corrupted Water.tsx"/>
- <tileset firstgid="4351" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/interaction.tsx"/>
- <tileset firstgid="4353" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Objects.tsx"/>
+ <tileset firstgid="4351" source="../data/Tilesets/interaction.tsx"/>
+ <tileset firstgid="4353" source="../data/Tilesets/Objects.tsx"/>
  <layer id="44" name="Water" width="50" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

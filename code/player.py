@@ -51,14 +51,14 @@ class Player(pygame.sprite.Sprite):
 			'tomato': 20,
 			'moon_melon': 5,
 			'pumpkin': 5,
-			'cactus': 5,
+			'cactus': 50,
 		}
 		self.seed_inventory = {
 		'corn': 5,
 		'tomato': 5,
 		'moon_melon': 10,	
 		'pumpkin': 10,
-		'cactus': 10
+		'cactus': 50
 		}
 		self.money = 200
 

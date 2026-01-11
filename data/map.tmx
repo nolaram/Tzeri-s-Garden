@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="40" tilewidth="64" tileheight="64" infinite="0" nextlayerid="19" nextobjectid="272">
- <tileset firstgid="1" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Grass.tsx"/>
- <tileset firstgid="81" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Hills.tsx"/>
- <tileset firstgid="117" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Fences.tsx"/>
- <tileset firstgid="133" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Plant Decoration.tsx"/>
- <tileset firstgid="143" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Objects.tsx"/>
- <tileset firstgid="153" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Paths.tsx"/>
- <tileset firstgid="169" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/interaction.tsx"/>
- <tileset firstgid="171" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Water.tsx"/>
- <tileset firstgid="172" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/House.tsx"/>
- <tileset firstgid="207" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/House Decoration.tsx"/>
+ <tileset firstgid="1" source="../data/Tilesets/Grass.tsx"/>
+ <tileset firstgid="81" source="../data/Tilesets/Hills.tsx"/>
+ <tileset firstgid="117" source="../data/Tilesets/Fences.tsx"/>
+ <tileset firstgid="133" source="../data/Tilesets/Plant Decoration.tsx"/>
+ <tileset firstgid="143" source="../data/Tilesets/Objects.tsx"/>
+ <tileset firstgid="153" source="../data/Tilesets/Paths.tsx"/>
+ <tileset firstgid="169" source="../data/Tilesets/interaction.tsx"/>
+ <tileset firstgid="171" source="../data/Tilesets/Water.tsx"/>
+ <tileset firstgid="172" source="../data/Tilesets/House.tsx"/>
+ <tileset firstgid="207" source="../data/Tilesets/House Decoration.tsx"/>
  <layer id="2" name="Water" width="50" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

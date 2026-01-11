@@ -43,7 +43,7 @@ GROW_SPEED = {
 	'tomato': 0.7,
     'moon_melon': 1,
     'pumpkin': 1,
-    'cactus': 1
+    'cactus': 5
 }
 
 SALE_PRICES = {
