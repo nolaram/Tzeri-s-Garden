@@ -1,48 +1,51 @@
-import pygame, sys, os
-from pathlib import Path
-ROOT_DIR = Path(__file__).resolve().parent.parent
-os.chdir(ROOT_DIR)
-sys.path.append(str(ROOT_DIR / 'code'))
-from settings import *
-from level import Level
 from title_screen import TitleScreen
-
+from level import Level
+from intro_cutscene import IntroCutscene  # Add this import
+import pygame
+from settings import *
 
 class Game:
 	def __init__(self):
 		pygame.init()
-		self.screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
-		pygame.display.set_caption("Tzeri's Garden")
+		self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+		pygame.display.set_caption('Tzeri\'s Garden')
 		self.clock = pygame.time.Clock()
-
-		# start with title screen
+		
+		self.state = 'title'  # States: 'title', 'cutscene', 'playing'
 		self.title_screen = TitleScreen()
+		self.intro_cutscene = None
 		self.level = None
-		self.state = 'title'  # 'title' or 'playing'
 
 	def run(self):
 		while True:
+			dt = self.clock.tick(60) / 1000
 			events = pygame.event.get()
+			
+			# Check for quit
 			for event in events:
 				if event.type == pygame.QUIT:
 					pygame.quit()
-					sys.exit()
-  
-			dt = self.clock.tick() / 1000
-
-			# Title state
+					exit()
+			
 			if self.state == 'title':
-				self.title_screen.update(dt)
-				self.title_screen.draw()
-				if self.title_screen.done:
-					# create the level and switch state
-					self.level = Level()
+				result = self.title_screen.run(dt, events)
+				if result == 'start':
+					self.state = 'cutscene'
+					self.intro_cutscene = IntroCutscene()
+				elif result == 'quit':
+					pygame.quit()
+					exit()
+			
+			elif self.state == 'cutscene':
+				if self.intro_cutscene.run(dt, events):
+					# Cutscene finished, start game
 					self.state = 'playing'
-
-			# Playing state
-			else:
-				self.level.run(dt, events)
-
+					self.level = Level()
+			
+			elif self.state == 'playing':
+				if self.level:
+					self.level.run(dt, events)
+			
 			pygame.display.update()
 
 if __name__ == '__main__':

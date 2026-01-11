@@ -86,4 +86,13 @@ class TitleScreen:
             fade_surf.fill((0, 0, 0))
             self.display_surface.blit(fade_surf, (0, 0))
 
+    def run(self, dt, events):
+        """Main run method that returns state"""
+        self.update(dt)
+        self.draw()
+        
+        if self.done:
+            return 'start'
+        return None
+
 

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.8" tiledversion="1.8.6" orientation="orthogonal" renderorder="right-down" width="50" height="40" tilewidth="64" tileheight="64" infinite="0" nextlayerid="19" nextobjectid="272">
- <tileset firstgid="1" source="Tilesets/Grass.tsx"/>
- <tileset firstgid="81" source="Tilesets/Hills.tsx"/>
- <tileset firstgid="117" source="Tilesets/Fences.tsx"/>
- <tileset firstgid="133" source="Tilesets/Plant Decoration.tsx"/>
- <tileset firstgid="143" source="Tilesets/Objects.tsx"/>
- <tileset firstgid="153" source="Tilesets/Paths.tsx"/>
- <tileset firstgid="169" source="Tilesets/interaction.tsx"/>
- <tileset firstgid="171" source="Tilesets/Water.tsx"/>
- <tileset firstgid="172" source="Tilesets/House.tsx"/>
- <tileset firstgid="207" source="Tilesets/House Decoration.tsx"/>
- <layer id="2" name="Water" width="50" height="40" visible="0">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="40" tilewidth="64" tileheight="64" infinite="0" nextlayerid="19" nextobjectid="272">
+ <tileset firstgid="1" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Grass.tsx"/>
+ <tileset firstgid="81" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Hills.tsx"/>
+ <tileset firstgid="117" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Fences.tsx"/>
+ <tileset firstgid="133" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Plant Decoration.tsx"/>
+ <tileset firstgid="143" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Objects.tsx"/>
+ <tileset firstgid="153" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Paths.tsx"/>
+ <tileset firstgid="169" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/interaction.tsx"/>
+ <tileset firstgid="171" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/Water.tsx"/>
+ <tileset firstgid="172" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/House.tsx"/>
+ <tileset firstgid="207" source="../../../../Tzeri-s-Garden-main-master/data/Tilesets/House Decoration.tsx"/>
+ <layer id="2" name="Water" width="50" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -610,7 +610,7 @@
   <object id="78" gid="149" x="1746" y="622" width="56" height="116" visible="0"/>
   <object id="95" gid="144" x="962" y="442" width="56" height="68"/>
  </objectgroup>
- <layer id="14" name="Collision" width="50" height="40" visible="0">
+ <layer id="14" name="Collision" width="50" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -654,7 +654,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="13" name="Farmable" width="50" height="40" visible="0">
+ <layer id="13" name="Farmable" width="50" height="40">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
