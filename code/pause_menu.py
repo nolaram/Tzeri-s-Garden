@@ -36,12 +36,12 @@ class PauseMenu:
 			"Controls:",
 			"Move: Arrow keys or WASD",
 			"Use tool: Mouse Left Click / Space",
-			"Use seed: Left Ctrl",
+			"Use seed: Mouse Right Click / Left Control",
 			"Change tool: Q / Change seed: E",
-			"Interact / Enter bed / Talk: Enter",
-			"Pause: ESC (this menu)",
+			"Interact: Enter",
+			"Pause: ESC ",
 			"Use the mouse to click buttons in menus.",
-			"Press TAB to access inventory"
+			"Open Inventory: TAB"
 		]
 
 		self.credits_lines = [

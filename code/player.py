@@ -138,6 +138,13 @@ class Player(pygame.sprite.Sprite):
 		# mouse support
 		buttons = pygame.mouse.get_pressed() 
 
+		if buttons[2] or keys[pygame.K_LCTRL]:
+			if not self.timers['seed use'].active:
+				self.get_target_pos()
+				self.timers['seed use'].activate()
+				self.direction = pygame.math.Vector2()
+				self.frame_index = 0
+
 		if not self.timers['tool use'].active and not self.sleep:
 			# directions
 			# up and down movement
