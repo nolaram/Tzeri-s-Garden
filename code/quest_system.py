@@ -53,6 +53,7 @@ class QuestManager:
         self.display_surface = pygame.display.get_surface()
         self.font = pygame.font.Font('font/LycheeSoda.ttf', 20)
         self.title_font = pygame.font.Font('font/LycheeSoda.ttf', 28)
+        self.small_font = pygame.font.Font('font/LycheeSoda.ttf', 16)
         
         # Define all quests
         self.all_quests = self.create_quests()
@@ -63,6 +64,9 @@ class QuestManager:
         self.show_completion = False
         self.completion_timer = 0
         self.completion_duration = 3.0  # Show for 3 seconds
+        
+        # Toggle state
+        self.quest_ui_visible = True  # Quest UI visible by default
 
     def create_quests(self):
         """Define all quests in the game"""
@@ -115,6 +119,10 @@ class QuestManager:
         ]
         return quests
 
+    def toggle_quest_ui(self):
+        """Toggle the quest UI visibility"""
+        self.quest_ui_visible = not self.quest_ui_visible
+
     def on_harvest(self, crop_type):
         """Called when player harvests a crop"""
         if self.active_quest and not self.active_quest.completed:
@@ -166,12 +174,12 @@ class QuestManager:
                 self.show_completion = False
 
     def draw_quest_ui(self):
-        """Draw quest progress in top-left corner"""
-        if not self.active_quest:
+        """Draw quest progress in top-left corner (lowered position)"""
+        if not self.active_quest or not self.quest_ui_visible:
             return
         
-        # Position
-        x, y = 10, 100
+        # Position (lowered by 120 pixels to avoid time system)
+        x, y = 10, 220
         padding = 10
         
         # Quest title
@@ -189,11 +197,19 @@ class QuestManager:
             total_height += self.font.get_linesize()
         total_height += padding * 2
         
+        # Add space for hint text
+        total_height += self.small_font.get_linesize() + 5
+        
         # Calculate total width
         max_width = title_rect.width
         for line in progress_lines:
             line_width = self.font.size(line)[0]
             max_width = max(max_width, line_width)
+        
+        # Check hint text width
+        hint_text = "Press 'O' to hide"
+        hint_width = self.small_font.size(hint_text)[0]
+        max_width = max(max_width, hint_width)
         max_width += padding * 2
         
         # Draw background
@@ -210,6 +226,33 @@ class QuestManager:
             line_surf = self.font.render(line, True, (200, 200, 200))
             self.display_surface.blit(line_surf, (x, current_y))
             current_y += self.font.get_linesize()
+        
+        # Draw hint text at bottom
+        current_y += 5
+        hint_surf = self.small_font.render(hint_text, True, (150, 150, 150))
+        self.display_surface.blit(hint_surf, (x, current_y))
+
+    def draw_quest_hint(self):
+        """Draw a small hint when quest UI is hidden"""
+        if self.quest_ui_visible or not self.active_quest:
+            return
+        
+        # Position
+        x, y = 10, 220
+        padding = 8
+        
+        # Hint text
+        hint_text = "Press 'O' to show quest"
+        hint_surf = self.small_font.render(hint_text, True, (200, 200, 200))
+        hint_rect = hint_surf.get_rect(topleft=(x, y))
+        
+        # Background
+        bg_rect = hint_rect.inflate(padding * 2, padding)
+        pygame.draw.rect(self.display_surface, (0, 0, 0, 180), bg_rect, border_radius=6)
+        pygame.draw.rect(self.display_surface, (200, 200, 200), bg_rect, 2, border_radius=6)
+        
+        # Draw text
+        self.display_surface.blit(hint_surf, hint_rect)
 
     def draw_completion_popup(self):
         """Draw quest completion popup"""
@@ -248,4 +291,5 @@ class QuestManager:
     def draw(self):
         """Draw all quest UI elements"""
         self.draw_quest_ui()
+        self.draw_quest_hint()  # Show hint when hidden
         self.draw_completion_popup()

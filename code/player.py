@@ -88,15 +88,12 @@ class Player(pygame.sprite.Sprite):
 
 	def get_target_pos(self):
 		# added logic for target to follow mouse when using mouse. If gamit space, target is infront of character
-		if any(pygame.mouse.get_pressed()) or self.timers['tool use'].active:
+		if pygame.mouse.get_pressed()[0]:
 			player_pos = pygame.math.Vector2(self.rect.center)
-			# mouse correction
-			corrected_mouse_pos = pygame.mouse.get_pos() - pygame.math.Vector2(5,5)
-			mouse_world_pos = corrected_mouse_pos + self.offset
-			distance = player_pos.distance_to(mouse_world_pos)
-
-			# hit tile under
+			mouse_world_pos = pygame.mouse.get_pos() + self.offset
 			
+			
+			distance = player_pos.distance_to(mouse_world_pos)
 			if distance <= PLAYER_REACH_LIMIT:
 				# for within range: hit exactly where mouse is nigga
 				self.target_pos = mouse_world_pos
@@ -114,7 +111,6 @@ class Player(pygame.sprite.Sprite):
 			# Only consume seed if planting was successful
 			if self.soil_layer.plant_seed(self.target_pos, self.selected_seed):
 				self.seed_inventory[self.selected_seed] -= 1
-				
 	def import_assets(self):
 		self.animations = {'up': [],'down': [],'left': [],'right': [],
 						   'right_idle':[],'left_idle':[],'up_idle':[],'down_idle':[],
@@ -137,13 +133,6 @@ class Player(pygame.sprite.Sprite):
 		keys = pygame.key.get_pressed()
 		# mouse support
 		buttons = pygame.mouse.get_pressed() 
-
-		if buttons[2] or keys[pygame.K_LCTRL]:
-			if not self.timers['seed use'].active:
-				self.get_target_pos()
-				self.timers['seed use'].activate()
-				self.direction = pygame.math.Vector2()
-				self.frame_index = 0
 
 		if not self.timers['tool use'].active and not self.sleep:
 			# directions
@@ -180,7 +169,6 @@ class Player(pygame.sprite.Sprite):
 					# cancel logic to only activate when within PLAYER_REACH_LIMIT
 					if distance <= PLAYER_REACH_LIMIT:
 						use_tool= True
-						self.get_target_pos()
 
 						player_to_mouse = mouse_world_pos - pygame.math.Vector2(self.rect.center)
 						if abs(player_to_mouse.x) > abs(player_to_mouse.y):
@@ -193,11 +181,10 @@ class Player(pygame.sprite.Sprite):
 						use_tool = True
 
 				if use_tool:
-					if not self.timers['tool use'].active:
-						self.timers['tool use'].activate()
-						self.direction = pygame.math.Vector2()
-						self.frame_index = 0
-						self.get_target_pos()
+					self.timers['tool use'].activate()
+					self.direction = pygame.math.Vector2()
+					self.frame_index = 0
+					self.get_target_pos()
 
 			# change tool
 			if keys[pygame.K_q] and not self.timers['tool switch'].active:
@@ -284,8 +271,7 @@ class Player(pygame.sprite.Sprite):
 		self.input()
 		self.get_status()
 		self.update_timers()
-		if not self.timers['tool use'].active and not self.timers['seed use'].active:
-			self.get_target_pos()
+		self.get_target_pos()
 
 		self.move(dt)
 		self.animate(dt)

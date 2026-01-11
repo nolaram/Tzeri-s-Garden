@@ -13,6 +13,7 @@ from menu import Menu
 from pause_menu import PauseMenu
 from quest_system import QuestManager
 from inventory_ui import InventoryUI
+from time_system import TimeSystem
 
 class Level:
 	def __init__(self):
@@ -80,6 +81,9 @@ class Level:
 		# Inventory UI
 		self.inventory_ui = InventoryUI(self.player)
 		self.inventory_active = False
+
+		# Time system
+		self.time_system = TimeSystem()
 
 	def setup(self):
 		"""Load ALL layers from the current stage map"""
@@ -914,6 +918,9 @@ class Level:
 		pygame.mouse.set_visible(self.pause_active)
 
 	def reset(self):
+		# Advance to next day
+		self.time_system.advance_to_next_day()
+		
 		# plants
 		self.soil_layer.update_plants()
 
@@ -989,6 +996,11 @@ class Level:
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
 				self.inventory_active = not self.inventory_active
 				continue
+
+			# Check for quest toggle
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_o:
+				self.quest_manager.toggle_quest_ui()
+				continue
 			
 			# if ESC pressed
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -1032,6 +1044,7 @@ class Level:
 			self.all_sprites.update(dt)
 			self.plant_collision()
 			self.quest_manager.update(dt)
+			self.time_system.update(dt)  # Update time system
 
 		# weather
 		if hasattr(self, 'player'):
@@ -1046,6 +1059,9 @@ class Level:
 
 		# Display cleanse progress
 		self.display_cleanse_progress()
+
+		# Display time and day
+		self.time_system.draw()
 
 		# transition overlay
 		if hasattr(self, 'player') and self.player.sleep:
