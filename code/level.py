@@ -922,6 +922,9 @@ class Level:
 		# drawing logic
 		self.display_surface.fill('black')
 		self.all_sprites.custom_draw(self.player)
+
+		if self.player.timers['tool use'].active or self.player.timers['seed use'].active:
+			self.draw_grid_selection()
 		
 		# Update player's knowledge about camera offset to make spatial mouse control possible
 		if hasattr(self, 'player'):
@@ -959,6 +962,7 @@ class Level:
 
 		# draw either custom cursor or let system cursor show while paused
 		self.draw_cursor()
+		
 
 		# draw pause menu on top
 		if self.pause_active:
@@ -1014,12 +1018,23 @@ class Level:
 								(bar_x, bar_y, fill_width, bar_height), 0, 3)
 
 	def draw_cursor(self):
+		# Attempt to make mouse feel smooth
+		mouse_pos = pygame.mouse.get_pos()
+	
+		offset_x = 5
+		offset_y = 5
+		render_pos = (mouse_pos[0] - offset_x, mouse_pos[1] - offset_y)
+		self.display_surface.blit(self.cursor_surf, render_pos)
 		# only draw custom cursor when OS cursor is hidden (e.g., not paused)
-		if not pygame.mouse.get_visible():
-			mouse_pos = pygame.mouse.get_pos()
-			cursor_rect = self.cursor_surf.get_rect(center = mouse_pos)
-			self.display_surface.blit(self.cursor_surf, cursor_rect)
 
+	def draw_grid_selection(self):
+		target_pos = self.player.target_pos
+		col = int(target_pos.x // TILE_SIZE)
+		row = int(target_pos.y // TILE_SIZE)
+
+		current_tile_rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+		offset = self.all_sprites.offset
+		pygame.draw.rect(self.display_surface, 'white', current_tile_rect.move(-offset), 3)
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()

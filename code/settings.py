@@ -5,7 +5,7 @@ SCREEN_HEIGHT = 720
 TILE_SIZE = 64
 
 # maximum reach distance (pixels) for interacting with tiles
-PLAYER_REACH_LIMIT = 100
+PLAYER_REACH_LIMIT = 150
 
 # overlay positions 
 OVERLAY_POSITIONS = {
