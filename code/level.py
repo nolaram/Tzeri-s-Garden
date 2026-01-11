@@ -12,6 +12,7 @@ from random import randint
 from menu import Menu
 from pause_menu import PauseMenu
 from quest_system import QuestManager
+from inventory_ui import InventoryUI
 
 class Level:
 	def __init__(self):
@@ -75,6 +76,10 @@ class Level:
 		self.success.set_volume(0.3)
 		self.music = pygame.mixer.Sound('audio/music.mp3')
 		self.music.play(loops = -1)
+
+		# Inventory UI
+		self.inventory_ui = InventoryUI(self.player)
+		self.inventory_active = False
 
 	def setup(self):
 		"""Load ALL layers from the current stage map"""
@@ -908,10 +913,22 @@ class Level:
 		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
 		filtered_events = []
 		for event in events:
-			# if ESC pressed and pause isn't active yet, open pause and don't forward this event
-			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.pause_active:
-				self.toggle_pause()
+			# Check for inventory toggle
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
+				self.inventory_active = not self.inventory_active
 				continue
+			
+			# if ESC pressed
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+				if self.inventory_active:
+					# Close inventory if it's open
+					self.inventory_active = False
+					continue
+				elif not self.pause_active:
+					# Open pause menu
+					self.toggle_pause()
+					continue
+			
 			# Handle quest reward claiming
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
 				if self.quest_manager.active_quest and self.quest_manager.active_quest.completed:
@@ -936,6 +953,9 @@ class Level:
 			self.pause.update(filtered_events)
 		elif self.shop_active:
 			self.menu.update()
+		elif self.inventory_active:
+			# Inventory is open - pause game updates
+			pass
 		else:
 			self.all_sprites.update(dt)
 			self.plant_collision()
@@ -944,12 +964,13 @@ class Level:
 		# weather
 		if hasattr(self, 'player'):
 			self.overlay.display(dt, filtered_events)
-		if self.raining and not (self.shop_active or self.pause_active):
+		if self.raining and not (self.shop_active or self.pause_active or self.inventory_active):
 			self.rain.update()
 		self.sky.display(dt)
 
 		# Quest UI
-		self.quest_manager.draw()
+		if not self.inventory_active:
+			self.quest_manager.draw()
 
 		# Display cleanse progress
 		self.display_cleanse_progress()
@@ -959,6 +980,10 @@ class Level:
 			if not self.transition.stack:
 				self.transition.add_transition()
 			self.transition.play()
+
+		# Draw inventory UI (on top of everything)
+		if self.inventory_active:
+			self.inventory_ui.draw()
 
 		# draw either custom cursor or let system cursor show while paused
 		self.draw_cursor()
