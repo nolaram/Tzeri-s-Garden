@@ -209,14 +209,20 @@ class SoilLayer:
 	def plant_seed(self, target_pos, seed):
 		for soil_sprite in self.soil_sprites.sprites():
 			if soil_sprite.rect.collidepoint(target_pos):
-				self.plant_sound.play()
-
 				x = soil_sprite.rect.x // TILE_SIZE
 				y = soil_sprite.rect.y // TILE_SIZE
 
+				# Check if already planted
 				if 'P' not in self.grid[y][x]:
+					self.plant_sound.play()
 					self.grid[y][x].append('P')
 					Plant(seed, [self.all_sprites, self.plant_sprites, self.collision_sprites], soil_sprite, self.check_watered)
+					return True  # Planting successful
+				else:
+					# Already planted, planting failed
+					return False
+		
+		return False  # No soil found at target position
 
 	def update_plants(self):
 		for plant in self.plant_sprites.sprites():

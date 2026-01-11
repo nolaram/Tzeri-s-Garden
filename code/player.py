@@ -108,9 +108,10 @@ class Player(pygame.sprite.Sprite):
 
 	def use_seed(self):
 		if self.seed_inventory[self.selected_seed] > 0:
-			self.soil_layer.plant_seed(self.target_pos, self.selected_seed)
-			self.seed_inventory[self.selected_seed] -= 1
-
+			# Only consume seed if planting was successful
+			if self.soil_layer.plant_seed(self.target_pos, self.selected_seed):
+				self.seed_inventory[self.selected_seed] -= 1
+				
 	def import_assets(self):
 		self.animations = {'up': [],'down': [],'left': [],'right': [],
 						   'right_idle':[],'left_idle':[],'up_idle':[],'down_idle':[],
