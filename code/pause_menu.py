@@ -40,7 +40,8 @@ class PauseMenu:
 			"Change tool: Q / Change seed: E",
 			"Interact / Enter bed / Talk: Enter",
 			"Pause: ESC (this menu)",
-			"Use the mouse to click buttons in menus."
+			"Use the mouse to click buttons in menus.",
+			"Press TAB to access inventory"
 		]
 
 		self.credits_lines = [

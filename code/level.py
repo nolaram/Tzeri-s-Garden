@@ -914,7 +914,7 @@ class Level:
 		filtered_events = []
 		for event in events:
 			# Check for inventory toggle
-			if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
 				self.inventory_active = not self.inventory_active
 				continue
 			
