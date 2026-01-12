@@ -14,18 +14,18 @@ class CorruptionSurge:
         self.close_button_rect = None
 
         # Surge settings
-        self.surge_chance = 1.0  # 100% for testing (change to 0.2 for 20%)
+        self.surge_chance = 0.2  # 100% for testing (change to 0.2 for 20%)
         self.surge_triggered = False
         self.surge_happened_today = False
         
         # Warning phase
         self.warning_active = False
-        self.warning_duration = 5.0  # 5 seconds warning
+        self.warning_duration = 10.0  # 10 seconds warning
         self.warning_timer = 0
         
         # Surge execution
         self.surge_active = False
-        self.surge_duration = 3.0  # 3 seconds of surge effect
+        self.surge_duration = 5.0  # 5 seconds of surge effect
         self.surge_timer = 0
         
         # Visual effects

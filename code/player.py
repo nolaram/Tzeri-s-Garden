@@ -10,7 +10,6 @@ class Player(pygame.sprite.Sprite):
 		self.import_assets()
 		self.status = 'down_idle'
 		self.frame_index = 0
-		self.ward_count = 0
 
 		# general setup
 		self.image = self.animations[self.status][self.frame_index]
@@ -36,7 +35,7 @@ class Player(pygame.sprite.Sprite):
 		}
 
 		# tools 
-		self.tools = ['hoe','axe','water']
+		self.tools = ['hoe','axe','water','ward']
 		self.tool_index = 0
 		self.selected_tool = self.tools[self.tool_index]
 
@@ -241,27 +240,17 @@ class Player(pygame.sprite.Sprite):
 				elif keys[pygame.K_SPACE]:
 						use_tool = True
 
-<<<<<<< HEAD
-				if use_tool:
-					if not self.timers['tool use'].active:
-						self.timers['tool use'].activate()
-						self.direction = pygame.math.Vector2()
-						self.frame_index = 0
-						self.get_target_pos()
-=======
 				if use_tool and not keys[pygame.K_CAPSLOCK]:
 					self.timers['tool use'].activate()
 					self.direction = pygame.math.Vector2()
 					self.frame_index = 0
 					self.get_target_pos()
->>>>>>> 12d7871 (Added features)
 
 			# change tool
-				if keys[pygame.K_q] and not self.timers['tool switch'].active:
-					self.timers['tool switch'].activate()
-					self.tool_index += 1
-					self.tool_index = self.tool_index if self.tool_index < len(self.tools) else 0
-					self.selected_tool = self.tools[self.tool_index]
+			if keys[pygame.K_q] and not self.timers['tool switch'].active:
+				self.timers['tool switch'].activate()
+				self.tool_index = (self.tool_index + 1) % len(self.tools)
+				self.selected_tool = self.tools[self.tool_index]
 
 			# seed use
 			elif buttons[2] or keys[pygame.K_LCTRL]:
