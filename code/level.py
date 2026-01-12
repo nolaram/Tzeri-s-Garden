@@ -20,6 +20,7 @@ from corruption_surge import CorruptionSurge
 from corruption_spread import CorruptionSpread, HealthSystem
 from ward_system import WardSystem
 from stage_cutscene import StageCutscene
+from save_load_menu import SaveLoadMenu
 
 class Level:
 	def __init__(self):
@@ -75,6 +76,10 @@ class Level:
 		self.ward_system = WardSystem(self.all_sprites)
 		self.ward_system.corruption_spread_ref = self.corruption_spread  # ADD THIS LINE
 
+		# save load
+		self.save_load_menu = SaveLoadMenu(self, self.toggle_save_load_menu)
+		self.save_load_active = False
+
 		self.setup()
 
 		# Create soil layer AFTER setup
@@ -111,7 +116,7 @@ class Level:
 		self.shop_active = False
 
 		# pause
-		self.pause = PauseMenu(self.toggle_pause)
+		self.pause = PauseMenu(self.toggle_pause, self.toggle_save_load_menu)
 		self.pause_active = False
 
 		# music
@@ -124,6 +129,23 @@ class Level:
 
 		# Time system
 		self.time_system = TimeSystem()
+
+	def quick_save(self):
+		from save_load import SaveLoadSystem
+		save_system = SaveLoadSystem()
+		save_system.save_game(self, "autosave")
+		print ("💾 Quick saved!")
+	
+	def quick_load(self):
+		from save_load import SaveLoadSystem
+		save_system = SaveLoadSystem()
+		if save_system.load_game(self, "autosave"):
+			print ("📂 Quick loaded!")
+
+	def toggle_save_load_menu(self):
+		self.save_load_active = not self.save_load_active
+		pygame.mouse.set_visible(self.save_load_active)
+
 
 	def on_player_death(self):
 		"""Called when player dies"""
@@ -1001,6 +1023,20 @@ class Level:
 				if self.quest_manager.active_quest and self.quest_manager.active_quest.completed:
 					self.quest_manager.claim_rewards()
 					continue
+
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_F5: 
+				if not self.save_load_active and not self.pause_active:
+					self.toggle_save_load_menu()
+					continue
+
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_F6:
+				self.quick_save()
+				continue
+
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_F9:
+				self.quick_load()
+				continue
+			
 			filtered_events.append(event)
 
 		# drawing logic
@@ -1018,7 +1054,11 @@ class Level:
 			self.player.offset = self.all_sprites.offset
 		
 		# updates
-		if self.pause_active:
+		if self.save_load_active:
+			self.save_load_menu.handle_input(filtered_events)
+			self.save_load_menu.draw()
+		
+		elif self.pause_active:
 			# let the pause menu handle its events and drawing (use filtered events)
 			self.pause.update(filtered_events)
 		elif self.stage_cutscene:

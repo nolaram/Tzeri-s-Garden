@@ -65,8 +65,14 @@ class InventoryUI:
         self.display_surface.blit(overlay, (0, 0))
         
         panel_rect = pygame.Rect(self.x, self.y, self.width, self.height)
-        pygame.draw.rect(self.display_surface, self.bg_color, panel_rect)
+
+        
+        panel_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        panel_surf.fill((20, 20, 20, 200))  
+        self.display_surface.blit(panel_surf, (self.x, self.y))
         pygame.draw.rect(self.display_surface, self.border_color, panel_rect, 3)
+
+
         
         title_surf = self.font.render("Inventory", True, self.border_color)
         self.display_surface.blit(

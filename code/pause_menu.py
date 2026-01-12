@@ -2,21 +2,22 @@ import pygame
 from settings import *
 
 class PauseMenu:
-	def __init__(self, toggle_pause):
+	def __init__(self, toggle_pause, toggle_save_load):
 		self.display_surface = pygame.display.get_surface()
 		self.toggle_pause = toggle_pause
+		self.toggle_save_load = toggle_save_load
 		self.font = pygame.font.Font('font/LycheeSoda.ttf', 28)
 		self.title_font = pygame.font.Font('font/LycheeSoda.ttf', 48)
 
 		# layout
 		self.width = 640
-		self.height = 420
+		self.height = 450
 		self.rect = pygame.Rect(SCREEN_WIDTH // 2 - self.width // 2,
 							SCREEN_HEIGHT // 2 - self.height // 2,
 							self.width, self.height)
 
 		# buttons (label, rendered surf, rect, hitbox)
-		labels = ['How to Play', 'Credits', 'Exit']
+		labels = ['How to Play', 'Credits', 'Save/Load', 'Exit']
 		self.buttons = []
 		for i, label in enumerate(labels):
 			surf = self.font.render(label, True, 'Black')
@@ -83,6 +84,9 @@ class PauseMenu:
 								self.active = 'how'
 							elif b['label'] == 'Credits':
 								self.active = 'credits'
+							elif b['label'] == 'Save/Load':
+								self.toggle_pause()
+								self.toggle_save_load()
 
 	def update(self, events):
 		# just process events here for clicks and keys
@@ -95,8 +99,11 @@ class PauseMenu:
 		self.display_surface.blit(overlay, (0, 0))
 
 		# panel
-		pygame.draw.rect(self.display_surface, 'White', self.rect, 0, 8)
-		pygame.draw.rect(self.display_surface, 'Black', self.rect, 4, 8)
+		# panel - transparent background
+		panel_surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+		panel_surf.fill((255, 255, 255, 115))  # White with 200/255 opacity (adjust 200 to your liking)
+		self.display_surface.blit(panel_surf, self.rect.topleft)
+		pygame.draw.rect(self.display_surface, 'Black', self.rect, 4, 8)  # Keep the black border
 
 		# title
 		title_s = self.title_font.render('Paused', True, 'Black')
