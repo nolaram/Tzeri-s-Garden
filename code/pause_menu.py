@@ -43,6 +43,7 @@ class PauseMenu:
 			"Pause: ESC",
 			"Inventory: Tab",
 			"Purification Wards: Caps Lock",
+			"Save/Load Menu: F5"
 		]
 
 		self.credits_lines = [
