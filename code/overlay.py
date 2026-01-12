@@ -12,7 +12,7 @@ class Overlay:
 		overlay_path = 'graphics/overlay/'
 		# Load tools (only hoe, axe, water - NOT ward)
 		self.tools_surf = {}
-		for tool in ['hoe', 'axe', 'water']:  # Hardcode the tools that have overlay images
+		for tool in ['hoe', 'axe', 'water', 'ward']:  # Hardcode the tools that have overlay images
 			try:
 				self.tools_surf[tool] = pygame.image.load(f'{overlay_path}{tool}.png').convert_alpha()
 			except Exception as e:

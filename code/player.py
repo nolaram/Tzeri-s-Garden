@@ -158,17 +158,18 @@ class Player(pygame.sprite.Sprite):
 						'right_idle':[],'left_idle':[],'up_idle':[],'down_idle':[],
 						'right_hoe':[],'left_hoe':[],'up_hoe':[],'down_hoe':[],
 						'right_axe':[],'left_axe':[],'up_axe':[],'down_axe':[],
-						'right_water':[],'left_water':[],'up_water':[],'down_water':[]}
+						'right_water':[],'left_water':[],'up_water':[],'down_water':[],
+						'right_ward':[], 'left_ward':[], 'up_ward':[], 'down_ward':[]}
 
 		for animation in self.animations.keys():
 			full_path = 'graphics/character/' + animation
 			self.animations[animation] = import_folder(full_path)
 		
 		# Reuse water animations for ward (since you probably don't have ward sprites yet)
-		self.animations['right_ward'] = self.animations['right_water']
-		self.animations['left_ward'] = self.animations['left_water']
-		self.animations['up_ward'] = self.animations['up_water']
-		self.animations['down_ward'] = self.animations['down_water']
+		self.animations['right_ward'] = self.animations['right_ward']
+		self.animations['left_ward'] = self.animations['left_ward']
+		self.animations['up_ward'] = self.animations['up_ward']
+		self.animations['down_ward'] = self.animations['down_ward']
 
 	def animate(self,dt):
 		self.frame_index += 4 * dt
