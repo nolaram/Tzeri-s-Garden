@@ -57,6 +57,7 @@ class Plant(pygame.sprite.Sprite):
 		self.y_offset = -16 if plant_type == 'corn' else -8
 		self.rect = self.image.get_rect(midbottom = soil.rect.midbottom + pygame.math.Vector2(0,self.y_offset))
 		self.z = LAYERS['ground plant']
+		self.hitbox = self.rect.copy().inflate(-26, -self.rect.height * 0.4)  # ADD THIS LINE
 
 	def grow(self, dt):
 		"""Grow plant based on delta time"""
@@ -81,18 +82,19 @@ class Plant(pygame.sprite.Sprite):
 				self.image = self.frames[self.age]
 				self.rect = self.image.get_rect(midbottom = self.soil.rect.midbottom + pygame.math.Vector2(0,self.y_offset))
 				
-				# Change Z layer when growing
-				if self.age > 0:
-					self.z = LAYERS['main']
+			# Change Z layer when growing
+			if self.age > 0:
+				self.z = LAYERS['main']
+				if not hasattr(self, 'hitbox') or self.hitbox is None:
 					self.hitbox = self.rect.copy().inflate(-26,-self.rect.height * 0.4)
+		
+		# Check if fully grown
+		if self.age >= self.max_age:
+			self.harvestable = True
 			
-			# Check if fully grown (must be at max age)
-			if self.current_grow_time >= self.total_grow_time and self.age >= self.max_age:
-				self.harvestable = True
-				
-				# Determine quality when fully grown (only once)
-				if self.quality == 'standard' and self.age == self.max_age:
-					self.determine_quality()
+			# Determine quality when fully grown (only once)
+			if self.quality == 'standard':
+				self.determine_quality()
 	
 	def determine_quality(self):
 		"""Randomly determine crop quality when harvested"""
@@ -271,8 +273,8 @@ class SoilLayer:
 				x = soil_sprite.rect.x // TILE_SIZE
 				y = soil_sprite.rect.y // TILE_SIZE
 
-				# Check if already planted
-				if 'P' not in self.grid[y][x]:
+				# Check if soil is tilled AND not already planted
+				if 'X' in self.grid[y][x] and 'P' not in self.grid[y][x]:
 					self.plant_sound.play()
 					self.grid[y][x].append('P')
 					Plant(seed, [self.all_sprites, self.plant_sprites, self.collision_sprites], soil_sprite, self.check_watered)
@@ -281,6 +283,9 @@ class SoilLayer:
 					# Already planted, planting failed
 					return False
 		
+		return False  # No soil found at target position
+		
+		print(f"✗ No soil sprite found at target position")
 		return False  # No soil found at target position
 
 	def update_plants(self, dt):

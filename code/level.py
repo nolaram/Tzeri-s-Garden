@@ -498,15 +498,6 @@ class Level:
 				elif obj_name == 'WildFlower':
 					if hasattr(obj, 'image') and obj.image:
 						WildFlower(pos, obj.image, [self.all_sprites, self.collision_sprites])
-				elif obj_name == 'CorruptedTree':
-					if hasattr(obj, 'image') and obj.image:
-						CorruptedTree(
-							pos=pos,
-							surf=obj.image,
-							groups=[self.all_sprites],
-							name=obj.name if hasattr(obj, 'name') else 'CorruptedTree',
-							player_add=self.player_add
-						)
 
 			# Collision layer
 			if 'collision' in layer_name_lower:
@@ -936,7 +927,12 @@ class Level:
 			return
 
 		for plant in self.soil_layer.plant_sprites.sprites():
-			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
+			# Check both rect and hitbox for collision
+			collision = plant.rect.colliderect(self.player.hitbox)
+			if hasattr(plant, 'hitbox'):
+				collision = collision or plant.hitbox.colliderect(self.player.hitbox)
+			
+			if plant.harvestable and collision:
 				
 				# Store crop with quality
 				crop_key = f"{plant.plant_type}_{plant.quality}"
@@ -978,9 +974,9 @@ class Level:
 				# Remove the plant
 				plant.kill()
 
-				# Remove 'P' from grid
-				cell_y = plant.rect.centery // TILE_SIZE
-				cell_x = plant.rect.centerx // TILE_SIZE
+				# Remove 'P' from grid (use soil position, not plant position)
+				cell_x = plant.soil.rect.x // TILE_SIZE
+				cell_y = plant.soil.rect.y // TILE_SIZE
 
 				if 0 <= cell_y < len(self.soil_layer.grid) and 0 <= cell_x < len(self.soil_layer.grid[0]):
 					cell = self.soil_layer.grid[cell_y][cell_x]
