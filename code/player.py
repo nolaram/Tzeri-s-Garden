@@ -19,6 +19,7 @@ class Player(pygame.sprite.Sprite):
 		# movement attributes
 		self.direction = pygame.math.Vector2()
 		self.pos = pygame.math.Vector2(self.rect.center)
+		self.target_pos = pygame.math.Vector2(self.rect.center)
 		self.speed = 200
 
 		# collision
@@ -106,27 +107,23 @@ class Player(pygame.sprite.Sprite):
 
 	def get_target_pos(self):
 		# added logic for target to follow mouse when using mouse. If gamit space, target is infront of character
-			if any(pygame.mouse.get_pressed()) or self.timers['tool use'].active:
-				player_pos = pygame.math.Vector2(self.rect.center)
-				corrected_mouse = pygame.mouse.get_pos() - pygame.math.Vector2(5,5)
-				mouse_world_pos = corrected_mouse + self.offset
-		
-				distance = player_pos.distance_to(mouse_world_pos)
+		if pygame.mouse.get_pressed()[0] or pygame.mouse.get_pressed()[2]:
+			player_pos = pygame.math.Vector2(self.rect.center)
+			corrected_mouse = pygame.mouse.get_pos() - pygame.math.Vector2(5,5)
+			mouse_world_pos = corrected_mouse + self.offset
+			
+			distance = player_pos.distance_to(mouse_world_pos)
 
-
-				if distance <= PLAYER_REACH_LIMIT:
-				# for within range: hit exactly where mouse is nigga
+			if distance <= PLAYER_REACH_LIMIT:
 					self.target_pos = mouse_world_pos
-				else:
-					# kapag out of range, calculate a point on the line towards the mouse
-					# capped sa reach limit	
-					direction_vec = (mouse_world_pos - player_pos).normalize()
-					self.target_pos = player_pos + (direction_vec * PLAYER_REACH_LIMIT)
 			else:
-				if self.direction.magnitude() > 0:
-					self.target_pos = self.rect.center + (self.direction.normalize() * PLAYER_REACH_LIMIT)
-				else:
-					self.target_pos = self.rect.center + PLAYER_TOOL_OFFSET[self.status.split('_')[0]]
+				direction_vec = (mouse_world_pos - player_pos).normalize()
+				self.target_pos = player_pos + (direction_vec * PLAYER_REACH_LIMIT)
+		else:
+			if self.direction.magnitude() > 0:
+				self.target_pos = self.rect.center + (self.direction.normalize() * 40)
+			else:
+				self.target_pos = pygame.math.Vector2(self.rect.center) + PLAYER_TOOL_OFFSET[self.status.split('_')[0]]
 
 	def use_seed(self):
 		if self.seed_inventory[self.selected_seed] > 0:
@@ -164,7 +161,8 @@ class Player(pygame.sprite.Sprite):
 		# mouse support
 		buttons = pygame.mouse.get_pressed() 
 
-		if not self.timers['tool use'].active and not self.sleep:
+		if not self.timers['tool use'].active and not self.timers['seed use'].active and not self.sleep:
+
 			# directions
 			# up and down movement
 			if keys[pygame.K_UP] or keys[pygame.K_w]:
@@ -218,17 +216,35 @@ class Player(pygame.sprite.Sprite):
 						self.get_target_pos()
 
 			# change tool
-			if keys[pygame.K_q] and not self.timers['tool switch'].active:
-				self.timers['tool switch'].activate()
-				self.tool_index += 1
-				self.tool_index = self.tool_index if self.tool_index < len(self.tools) else 0
-				self.selected_tool = self.tools[self.tool_index]
+				if keys[pygame.K_q] and not self.timers['tool switch'].active:
+					self.timers['tool switch'].activate()
+					self.tool_index += 1
+					self.tool_index = self.tool_index if self.tool_index < len(self.tools) else 0
+					self.selected_tool = self.tools[self.tool_index]
 
 			# seed use
-			if keys[pygame.K_LCTRL]:
-				self.timers['seed use'].activate()
-				self.direction = pygame.math.Vector2()
-				self.frame_index = 0
+			elif buttons[2] or keys[pygame.K_LCTRL]:
+				use_seed = False
+				if buttons[2]:
+					mouse_world_pos = pygame.mouse.get_pos() + self.offset
+					distance = pygame.math.Vector2(self.rect.center).distance_to(mouse_world_pos)
+
+					if distance <= PLAYER_REACH_LIMIT:
+						use_seed = True
+						player_to_mouse = mouse_world_pos - pygame.math.Vector2(self.rect.center)
+						if abs(player_to_mouse.x) > abs(player_to_mouse.y):
+							self.status = 'right' if player_to_mouse.x > 0 else 'left'
+						else:
+							self.status = 'down' if player_to_mouse.y > 0 else 'up'
+
+				elif keys[pygame.K_LCTRL]:
+					use_seed = True
+
+				if use_seed and not self.timers['seed use'].active:
+					self.get_target_pos()
+					self.timers['seed use'].activate()
+					self.direction = pygame.math.Vector2()
+					self.frame_index = 0
 
 			# change seed 
 			if keys[pygame.K_e] and not self.timers['seed switch'].active:
