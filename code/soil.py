@@ -83,11 +83,8 @@ class SoilLayer:
 
 	def create_soil_grid(self, map_path=None):
 		"""Create soil grid from the Farmable layer in the specified map"""
-		# Use the provided map path or fallback to default
 		if map_path is None:
 			map_path = 'data/map.tmx'
-		
-		print(f"  Loading Farmable layer from: {map_path}")
 		
 		try:
 			tmx_data = load_pygame(map_path)
@@ -104,27 +101,21 @@ class SoilLayer:
 			farmable_layer = None
 			for layer in tmx_data.visible_layers:
 				if hasattr(layer, 'name'):
-					print(f"    Checking layer: '{layer.name}'")
 					if layer.name.lower() == 'farmable':
 						farmable_layer = layer
-						print(f"    ✓ Found Farmable layer!")
 						break
 			
 			if farmable_layer is None:
-				print(f"  ⚠ Warning: No 'Farmable' layer found in {map_path}")
-				print(f"  Available layers: {[l.name for l in tmx_data.visible_layers]}")
 				return
 			
 			# Mark farmable tiles
 			farmable_count = 0
 			if hasattr(farmable_layer, 'tiles'):
-				# Tile layer
 				for x, y, surf in farmable_layer.tiles():
 					if surf and 0 <= y < v_tiles and 0 <= x < h_tiles:
 						self.grid[y][x].append('F')
 						farmable_count += 1
 			else:
-				# Object layer
 				for obj in farmable_layer:
 					x = int(obj.x // TILE_SIZE)
 					y = int(obj.y // TILE_SIZE)
@@ -132,10 +123,7 @@ class SoilLayer:
 						self.grid[y][x].append('F')
 						farmable_count += 1
 			
-			print(f"  ✓ Loaded {farmable_count} farmable tiles from '{farmable_layer.name}' layer")
-			
 		except Exception as e:
-			print(f"  ✗ Error loading farmable layer: {e}")
 			# Create empty grid as fallback
 			ground = pygame.image.load('graphics/world/ground.png')
 			h_tiles = ground.get_width() // TILE_SIZE

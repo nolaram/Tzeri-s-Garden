@@ -79,8 +79,7 @@ class CorruptionSurge:
         self.warning_timer = 0
         if self.warning_sound:
             self.warning_sound.play()
-        print("⚠️ CORRUPTION SURGE WARNING!")
-    
+        
     def start_surge(self):
         """Start the actual surge"""
         self.warning_active = False
@@ -88,10 +87,7 @@ class CorruptionSurge:
         self.surge_timer = 0
         if self.surge_sound:
             self.surge_sound.play()
-        print("💀 CORRUPTION SURGE ACTIVE!")
         self.destroyed_crops = {}
-
-        # Destroy crops
         self.destroy_crops()
     
     def destroy_crops(self):
@@ -99,36 +95,29 @@ class CorruptionSurge:
         if not self.soil_layer or not self.soil_layer.plant_sprites:
             return
         
-        # Get all plants
         all_plants = list(self.soil_layer.plant_sprites.sprites())
         
         if not all_plants:
             return
         
-        # Calculate how many to destroy
         num_to_destroy = max(1, int(len(all_plants) * self.destruction_percentage))
         
-        # Randomly select plants to destroy
         plants_to_destroy = []
         while len(plants_to_destroy) < num_to_destroy and all_plants:
             plant = choice(all_plants)
             plants_to_destroy.append(plant)
             all_plants.remove(plant)
         
-        # Destroy selected plants
         destroyed_count = 0
         for plant in plants_to_destroy:
-            # Get grid position
             cell_y = plant.rect.centery // TILE_SIZE
             cell_x = plant.rect.centerx // TILE_SIZE
             
-            # Remove from grid safely
             if 0 <= cell_y < len(self.soil_layer.grid) and 0 <= cell_x < len(self.soil_layer.grid[0]):
                 cell = self.soil_layer.grid[cell_y][cell_x]
                 while 'P' in cell:
                     cell.remove('P')
             
-            # Create destruction particle effect
             from sprites import Particle
             Particle(
                 plant.rect.topleft,
@@ -138,7 +127,6 @@ class CorruptionSurge:
                 duration=300
             )
             
-            # Kill the plant
             plant.kill()
             plant_type = getattr(plant, "plant_type", "unknown")
 
@@ -147,9 +135,7 @@ class CorruptionSurge:
             self.destroyed_crops[plant_type] += 1
 
             destroyed_count += 1
-
         
-        print(f"💀 Destroyed {destroyed_count} crops!")
         self.surge_happened_today = True
     
     def update(self, dt):
@@ -187,10 +173,7 @@ class CorruptionSurge:
         self.surge_timer = 0
         self.shake_offset = pygame.math.Vector2(0, 0)
         self.flash_alpha = 0
-
-        self.report_active = True   # ✅ show report
-
-        print("✓ Corruption surge ended")
+        self.report_active = True
     
     def draw_warning(self):
         """Draw warning UI"""

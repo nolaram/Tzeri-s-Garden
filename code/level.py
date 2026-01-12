@@ -112,18 +112,9 @@ class Level:
 		map_path = map_files.get(self.cleanse_stage, 'data/map.tmx')
 		self.current_map_path = map_path
 		
-		import os
-		print(f"\n{'='*50}")
-		print(f"Loading map: {map_path}")
-		print(f"Current stage: {self.cleanse_stage}")
-		print(f"File exists: {os.path.exists(map_path)}")
-		
 		try:
 			tmx_data = load_pygame(map_path)
-			print(f"✓ Successfully loaded map for stage: {self.cleanse_stage}")
 		except Exception as e:
-			print(f"✗ Error loading {map_path}: {e}")
-			print(f"Falling back to default map.tmx")
 			map_path = 'data/map.tmx'
 			self.current_map_path = map_path
 			tmx_data = load_pygame(map_path)
@@ -136,17 +127,6 @@ class Level:
 		
 		# Setup player and interactions
 		self.setup_player_and_interactions(tmx_data)
-		
-		# Check for missing important layers
-		layer_names = [layer.name.lower() for layer in tmx_data.visible_layers]
-		if 'farmable' not in layer_names:
-			print(f"  ⚠ WARNING: No 'Farmable' layer found in this map!")
-			print(f"  → Farming will not work until you add and make visible a Farmable layer")
-		if 'collision' not in layer_names:
-			print(f"  ⚠ WARNING: No 'Collision' layer found in this map!")
-			print(f"  → Custom collision tiles will not work")
-		
-		print(f"{'='*50}\n")
 
 	def clear_all_sprites(self):
 		"""Clear all sprite groups"""
@@ -170,16 +150,11 @@ class Level:
 
 	def process_all_layers_in_order(self, tmx_data):
 		"""Process ALL layers in the order they appear in Tiled"""
-		print(f"\nProcessing layers for {self.cleanse_stage}:")
-		print("-" * 30)
-		
-		# Get all visible layers in their Tiled order
 		all_layers = list(tmx_data.visible_layers)
 		
 		for i, layer in enumerate(all_layers):
 			layer_name = layer.name
 			layer_type = type(layer).__name__
-			print(f"Layer {i+1}: {layer_name} (type: {layer_type})")
 			
 			# Handle tile layers - check for tiles() method
 			if hasattr(layer, 'tiles') and callable(layer.tiles):
@@ -192,7 +167,6 @@ class Level:
 			# Fallback: try to iterate as object layer
 			elif hasattr(layer, '__iter__'):
 				try:
-					# Try to peek at first item
 					items = list(layer)
 					if items:
 						self.process_object_layer_by_name(layer_name, layer, tmx_data)
@@ -209,25 +183,23 @@ class Level:
 			if surf:
 				tile_count += 1
 		
-		print(f"  Processing tile layer '{layer_name}': {tile_count} tiles")
-		
 		# Define comprehensive layer processing rules
 		layer_rules = {
 			# Water layers (bottom-most)
 			'water': {'z': LAYERS['water'], 'groups': [self.all_sprites], 'special': 'water'},
 			'corrupted water': {'z': LAYERS['water'], 'groups': [self.all_sprites], 'special': 'water'},
 			
-			# Ground and terrain layers - these should be visible!
+			# Ground and terrain layers
 			'ground': {'z': LAYERS['ground'], 'groups': [self.all_sprites], 'collision': False},
 			'grass': {'z': LAYERS['ground'] + 0.2, 'groups': [self.all_sprites], 'collision': False},
 			'forest grass': {'z': LAYERS['ground'] + 0.3, 'groups': [self.all_sprites], 'collision': False},
 			'path': {'z': LAYERS['ground'] + 0.4, 'groups': [self.all_sprites], 'collision': False},
 			'hills': {'z': LAYERS['ground'] + 0.5, 'groups': [self.all_sprites], 'collision': False},
 			
-			# Details layer (above ground, below player)
+			# Details layer
 			'details': {'z': LAYERS['ground'] + 0.6, 'groups': [self.all_sprites], 'collision': False},
 			
-			# Decorations - NO collision, just visual
+			# Decorations
 			'decorations': {'z': LAYERS['main'] - 0.5, 'groups': [self.all_sprites], 'collision': False},
 			'decoration': {'z': LAYERS['main'] - 0.5, 'groups': [self.all_sprites], 'collision': False},
 			'outside decoration': {'z': LAYERS['main'] - 0.5, 'groups': [self.all_sprites], 'collision': False},
@@ -236,18 +208,18 @@ class Level:
 			'housefloor': {'z': LAYERS['house bottom'], 'groups': [self.all_sprites], 'collision': False},
 			'housefurniturebottom': {'z': LAYERS['house bottom'], 'groups': [self.all_sprites], 'collision': False},
 			'housewalls': {'z': LAYERS['main'], 'groups': [self.all_sprites, self.collision_sprites], 'collision': True},
-			'housefurnituretop': {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False},  # Removed collision
+			'housefurnituretop': {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False},
 			
-			# Fences and obstacles - keep collision only for fences
+			# Fences and obstacles
 			'fence': {'z': LAYERS['main'], 'groups': [self.all_sprites, self.collision_sprites], 'collision': True},
 			
-			# Farmable layer - should be visible!
+			# Farmable layer
 			'farmable': {'z': LAYERS['ground'] + 0.05, 'groups': [self.all_sprites], 'collision': False, 'special': 'farmable'},
 			
-			# Collision layer - invisible collision tiles
+			# Collision layer
 			'collision': {'z': LAYERS['main'], 'groups': [self.collision_sprites], 'collision': True, 'invisible': True},
 			
-			# Corruption-specific layers - NO collision (use collision layer instead)
+			# Corruption-specific layers
 			'corrupted objects': {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False},
 			'corrupted rock': {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False},
 			'corrupted tree1': {'z': LAYERS['main'] + 1, 'groups': [self.all_sprites], 'special': 'corrupted_tree'},
@@ -266,24 +238,20 @@ class Level:
 		
 		# Default rule if no match
 		if not rule:
-			# Determine default behavior based on layer name patterns
 			if 'collision' in layer_name_lower:
 				rule = {'z': LAYERS['main'], 'groups': [self.collision_sprites], 'collision': True, 'invisible': True}
-				print(f"    Using COLLISION rule for layer: {layer_name}")
 			elif 'house' in layer_name_lower:
 				rule = {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False}
 			elif 'tree' in layer_name_lower:
 				rule = {'z': LAYERS['main'] + 1, 'groups': [self.all_sprites, self.collision_sprites], 'collision': True}
 			else:
 				rule = {'z': LAYERS['main'], 'groups': [self.all_sprites], 'collision': False}
-			print(f"    Using default rule for layer: {layer_name}")
-		else:
-			print(f"    Matched rule: {matched_key}")
 		
 		# Process tiles in this layer
 		tiles_created = 0
 		tiles_skipped_no_surf = 0
 		farmable_tiles_registered = 0
+		
 		for x, y, surf in layer.tiles():
 			if not surf:
 				tiles_skipped_no_surf += 1
@@ -294,21 +262,17 @@ class Level:
 			# Handle special cases
 			if 'special' in rule:
 				if rule['special'] == 'farmable':
-					# Register this tile position with the soil layer!
-					# Add 'F' to the soil grid at this position
+					# Register with soil layer
 					if hasattr(self, 'soil_layer') and self.soil_layer:
-						# Make sure grid is large enough
 						if y < len(self.soil_layer.grid) and x < len(self.soil_layer.grid[0]):
 							if 'F' not in self.soil_layer.grid[y][x]:
 								self.soil_layer.grid[y][x].append('F')
 								farmable_tiles_registered += 1
 					
-					# Only create visual sprite for corrupted stage, make it invisible for other stages
+					# Create visual sprite
 					if self.cleanse_stage == 'corrupted':
-						# Visible farmable tiles in corrupted stage
 						Generic(pos, surf, rule['groups'], rule['z'])
 					else:
-						# Invisible farmable tiles in cleaner stages (still functional)
 						invisible_surf = surf.copy()
 						invisible_surf.set_alpha(0)
 						Generic(pos, invisible_surf, rule['groups'], rule['z'])
@@ -318,7 +282,6 @@ class Level:
 				
 				elif rule['special'] == 'water':
 					try:
-						# Try to load appropriate water frames
 						if 'corrupted' in layer_name_lower:
 							try:
 								water_frames = import_folder('graphics/corrupted_water')
@@ -327,37 +290,30 @@ class Level:
 						else:
 							water_frames = import_folder('graphics/water')
 						
-						# Make sure we have frames before creating water
 						if water_frames and len(water_frames) > 0:
 							Water(pos, water_frames, rule['groups'])
 							tiles_created += 1
 						else:
-							# Fallback to generic sprite if no water frames
 							if surf:
 								Generic(pos, surf, rule['groups'], rule['z'])
 								tiles_created += 1
 					except Exception as e:
-						print(f"    Warning: Could not create water tile at {pos}: {e}")
+						pass
 					continue
 					
 				elif rule['special'] == 'corrupted_tree':
-					# Create a corrupted tree as a simple obstacle (not an interactive Tree)
-					# Corrupted trees don't produce apples and can't be chopped
 					Generic(pos, surf, rule['groups'], rule['z'])
 					tiles_created += 1
 					continue
 			
 			# Handle invisible collision tiles
 			if rule.get('invisible', False):
-				# Create invisible collision sprite
 				if surf:
-					# Make the surface invisible
 					invisible_surf = surf.copy()
 					invisible_surf.set_alpha(0)
 					Generic(pos, invisible_surf, rule['groups'], rule['z'])
 					tiles_created += 1
 				else:
-					# No surface, create a blank invisible tile
 					collision_surf = pygame.Surface((TILE_SIZE, TILE_SIZE))
 					collision_surf.set_alpha(0)
 					Generic(pos, collision_surf, rule['groups'], rule['z'])
@@ -369,53 +325,34 @@ class Level:
 				Generic(pos, surf, rule['groups'], rule['z'])
 				tiles_created += 1
 			except Exception as e:
-				print(f"    Warning: Could not create tile at {pos}: {e}")
-		
-		print(f"    Created {tiles_created} sprites from this layer")
-		
-		if tiles_skipped_no_surf > 0:
-			print(f"    ⚠ Skipped {tiles_skipped_no_surf} tiles with no surface/graphic")
-		
-		if tiles_created > 0 and tiles_created != tile_count:
-			print(f"    ⚠ Warning: {tile_count - tiles_created - tiles_skipped_no_surf} tiles failed to create")
+				pass
 
 	def process_object_layer_by_name(self, layer_name, layer, tmx_data):
 		"""Process a specific object layer based on its name"""
 		layer_name_lower = layer_name.lower()
 		
 		objects_list = list(layer)
-		print(f"  Processing object layer '{layer_name}': {len(objects_list)} objects")
 		
 		for obj in objects_list:
 			pos = (obj.x, obj.y)
-				
 			obj_name = getattr(obj, 'name', None)
-			print(f"    Processing object: '{obj_name}' at ({obj.x}, {obj.y})")
-				
-			# Debug: Check if object has image
 			has_image = hasattr(obj, 'image') and obj.image is not None
-			print(f"      Has image: {has_image}")
-			if has_image:
-				print(f"      Image size: {obj.image.get_size()}")
-				
+			
 			# If object has no name but has an image, render it as a generic sprite
 			if (not obj_name or obj_name == 'None') and has_image:
 				Generic(pos, obj.image, [self.all_sprites], LAYERS['main'])
-				print(f"      ✓ Created generic sprite from unnamed/None object")
 				continue
-				
+			
 			# NOW check for named objects
 			if hasattr(obj, 'name') and obj_name:
 				if obj_name == 'Trader':
-					# Create visual sprite for trader if it has an image
 					if hasattr(obj, 'image') and obj.image:
 						Generic(pos, obj.image, [self.all_sprites], LAYERS['main'])
 					
-					# Create interaction zone
 					Interaction(
 						pos=pos,
 						size=(obj.width, obj.height),
-						groups=[self.interaction_sprites],  # Don't add to all_sprites (invisible hitbox)
+						groups=[self.interaction_sprites],
 						name='Trader'
 					)
 				elif obj_name == 'Tree':
@@ -440,58 +377,32 @@ class Level:
 							player_add=self.player_add
 						)
 
-			# Collision layer - invisible collision tiles
+			# Collision layer
 			if 'collision' in layer_name_lower:
 				if hasattr(obj, 'width') and hasattr(obj, 'height'):
-					# Create invisible collision surface
 					collision_surf = pygame.Surface((obj.width, obj.height))
-					collision_surf.set_alpha(0)  # Invisible
+					collision_surf.set_alpha(0)
 					Generic(pos, collision_surf, [self.collision_sprites], LAYERS['main'])
-					print(f"    Created collision rect at ({obj.x}, {obj.y}) - {obj.width}x{obj.height}")
 			
 			# Player layer - handled separately in setup_player
 			elif 'player' in layer_name_lower:
-				pass  # Handled separately
+				pass
 			
 			# Objects layer
 			elif 'objects' in layer_name_lower:
 				if hasattr(obj, 'image') and obj.image:
 					Generic(pos, obj.image, [self.all_sprites], LAYERS['main'])
-					obj_name = getattr(obj, 'name', None)
-				print(f"    Processing object: '{obj_name}' at ({obj.x}, {obj.y})")
-				
-				# Debug: Check if object has image
-				has_image = hasattr(obj, 'image') and obj.image is not None
-				print(f"      Has image: {has_image}")
-				if has_image:
-					print(f"      Image size: {obj.image.get_size()}")
-				
-				# If object has no name but has an image, render it as a generic sprite
-				if (not obj_name or obj_name == 'None') and has_image:
-					Generic((obj.x, obj.y), obj.image, [self.all_sprites], LAYERS['main'])
-					print(f"      ✓ Created generic sprite from unnamed/None object")
-					continue
-				
-				# Skip if no name attribute
-				if not hasattr(obj, 'name') or not obj_name:
-					if has_image:
-						# Still create it as a generic sprite
-						Generic((obj.x, obj.y), obj.image, [self.all_sprites], LAYERS['main'])
-						print(f"      ✓ Created generic sprite (no name)")
-					continue
 			
 			# Trader layer
 			elif 'trader' in layer_name_lower:
 				if hasattr(obj, 'name') and obj.name == 'Trader':
-					# Create visual sprite for trader if it has an image
 					if hasattr(obj, 'image') and obj.image:
 						Generic(pos, obj.image, [self.all_sprites], LAYERS['main'])
 					
-					# Create interaction zone
 					Interaction(
 						pos=pos,
 						size=(obj.width, obj.height),
-						groups=[self.interaction_sprites],  # Don't add to all_sprites (invisible hitbox)
+						groups=[self.interaction_sprites],
 						name='Trader'
 					)
 			
@@ -511,10 +422,9 @@ class Level:
 				if hasattr(obj, 'image') and obj.image:
 					WildFlower(pos, obj.image, [self.all_sprites, self.collision_sprites])
 			
-			# Default object handling - if it has an image, render it
+			# Default object handling
 			else:
 				if hasattr(obj, 'image') and obj.image:
-					# Determine if it should have collision based on properties
 					has_collision = False
 					if hasattr(obj, 'properties') and obj.properties:
 						has_collision = obj.properties.get('collision', False)
@@ -524,14 +434,10 @@ class Level:
 						groups.append(self.collision_sprites)
 					
 					Generic(pos, obj.image, groups, LAYERS['main'])
-					print(f"    Created generic sprite from object at ({obj.x}, {obj.y})")
 
 	def setup_player_and_interactions(self, tmx_data):
 		"""Setup player, bed, and other interactions from object layers"""
 		player_exists = hasattr(self, 'player') and self.player is not None
-		
-		print(f"\nSearching for player and interactions...")
-		print(f"Total visible layers: {len(list(tmx_data.visible_layers))}")
 		
 		# Look for Player layer
 		player_layer_found = False
@@ -540,34 +446,19 @@ class Level:
 			layer_type = type(layer).__name__
 			is_object_layer = 'TiledObjectGroup' in layer_type or 'ObjectLayer' in layer_type or (hasattr(layer, '__iter__') and not hasattr(layer, 'tiles'))
 			
-			print(f"  Checking layer '{layer_name}' (type: {layer_type}) - is object layer: {is_object_layer}")
-			
 			if is_object_layer and 'player' in layer_name.lower():
 				player_layer_found = True
-				print(f"  ✓ Found Player layer: '{layer_name}'")
 				objects_in_layer = list(layer)
-				print(f"    Objects in layer: {len(objects_in_layer)}")
 				
 				for obj in objects_in_layer:
 					obj_name = getattr(obj, 'name', 'unnamed')
-					print(f"    Processing object: '{obj_name}' at ({obj.x}, {obj.y})")
 					
-					# Debug: Check if object has image
-					has_image = hasattr(obj, 'image') and obj.image is not None
-					print(f"      Has image: {has_image}")
-					if has_image:
-						print(f"      Image size: {obj.image.get_size()}")
 					if hasattr(obj, 'name'):
 						# Player start position
 						if obj.name == 'Start':
-							# Tiled objects store position as top-left by default
-							# But if the object is a point (no width/height), use center directly
-							# Otherwise calculate center from the object's dimensions
 							if hasattr(obj, 'width') and hasattr(obj, 'height') and obj.width > 0 and obj.height > 0:
-								# Object has dimensions - calculate center
 								start_pos = (obj.x + obj.width // 2, obj.y + obj.height // 2)
 							else:
-								# Point object - use position directly
 								start_pos = (obj.x, obj.y)
 							
 							if not player_exists:
@@ -580,35 +471,26 @@ class Level:
 									soil_layer=self.soil_layer,
 									toggle_shop=self.toggle_shop
 								)
-								# Set energy system reference
 								self.player.energy_system = self.energy_system	
-
 							else:
-								# Reposition existing player
 								self.player.pos = pygame.math.Vector2(start_pos)
 								self.player.rect.center = start_pos
 								self.player.hitbox.center = self.player.rect.center
-							
-							print(f"  Player positioned at: {start_pos} (from obj at {obj.x}, {obj.y})")
 						
 						# Bed interaction
 						elif obj.name == 'Bed':
-							# Create visual sprite for bed if it has an image
 							if hasattr(obj, 'image') and obj.image:
 								Generic(pos, obj.image, [self.all_sprites], LAYERS['house bottom'])
 							
-							# Create interaction zone
 							Interaction(
 								pos=(obj.x, obj.y),
 								size=(obj.width, obj.height),
-								groups=[self.interaction_sprites],  # Don't add to all_sprites (invisible hitbox)
+								groups=[self.interaction_sprites],
 								name='Bed'
 							)
-							print(f"  Bed placed at: ({obj.x}, {obj.y})")
 						
-						# Trader interaction (if not already placed)
+						# Trader interaction
 						elif obj.name == 'Trader':
-							# Check if trader already exists
 							trader_exists = False
 							for sprite in self.interaction_sprites:
 								if hasattr(sprite, 'name') and sprite.name == 'Trader':
@@ -616,24 +498,18 @@ class Level:
 									break
 							
 							if not trader_exists:
-								# Create visual sprite for trader if it has an image
 								if hasattr(obj, 'image') and obj.image:
 									Generic(pos, obj.image, [self.all_sprites], LAYERS['main'])
 								
-								# Create interaction zone
 								Interaction(
 									pos=(obj.x, obj.y),
 									size=(obj.width, obj.height),
-									groups=[self.interaction_sprites],  # Don't add to all_sprites (invisible hitbox)
+									groups=[self.interaction_sprites],
 									name='Trader'
 								)
-								print(f"  Trader placed at: ({obj.x}, {obj.y})")
 
 		# Ensure player exists
 		if not player_exists and self.player is None:
-			print(f"  ⚠ Warning: No player start found, creating default player at (640, 360)")
-			if not player_layer_found:
-				print(f"  ⚠ Player layer was not found in the map!")
 			self.player = Player(
 				pos=(640, 360),
 				group=self.all_sprites,
@@ -643,37 +519,14 @@ class Level:
 				soil_layer=self.soil_layer,
 				toggle_shop=self.toggle_shop
 			)
-		elif self.player:
-			print(f"  ✓ Player setup complete at position: {self.player.rect.center}")
 		
-		# Update player's soil layer reference if soil layer exists
+		# Update player's soil layer reference
 		if self.soil_layer and self.player:
 			self.player.soil_layer = self.soil_layer
 		
 		# Update overlay with player reference
 		if hasattr(self, 'overlay'):
 			self.overlay.player = self.player
-		
-		# Debug: Print sprite group statistics
-		print(f"\n=== Sprite Statistics ===")
-		print(f"Total sprites in all_sprites: {len(self.all_sprites.sprites())}")
-		print(f"Collision sprites: {len(self.collision_sprites.sprites())}")
-		
-		# Count sprites by Z layer
-		layer_counts = {}
-		for sprite in self.all_sprites.sprites():
-			z = getattr(sprite, 'z', 'unknown')
-			layer_counts[z] = layer_counts.get(z, 0) + 1
-		
-		print(f"\nSprites per Z-layer:")
-		for z in sorted([k for k in layer_counts.keys() if k != 'unknown']):
-			layer_name = [name for name, val in LAYERS.items() if val == z]
-			layer_name = layer_name[0] if layer_name else f"Z={z}"
-			print(f"  {layer_name} (Z={z}): {layer_counts[z]} sprites")
-		
-		if 'unknown' in layer_counts:
-			print(f"  Unknown Z-layer: {layer_counts['unknown']} sprites")
-		print(f"========================\n")
 
 	def add_cleanse_points(self, points):
 		"""Add cleanse points and check for stage progression"""
@@ -691,27 +544,23 @@ class Level:
 		current_index = stage_order.index(self.cleanse_stage)
 		
 		if current_index < len(stage_order) - 1:
-			# FREEZE PLAYER IMMEDIATELY
+			# Freeze player during transition
 			player_was_sleeping = self.player.sleep
-			self.player.sleep = True  # Prevent player movement during transition
+			self.player.sleep = True
 			
-			# Reset cleanse points to prevent re-triggering
+			# Reset cleanse points
 			self.cleanse_points = 0
 			
 			# Save player position
 			saved_player_pos = self.player.rect.center
 			
-			# Change stage FIRST
+			# Change stage
 			self.cleanse_stage = stage_order[current_index + 1]
-			print(f"\n{'='*50}")
-			print(f"FARM PROGRESSED TO: {self.cleanse_stage.upper()}")
-			print(f"{'='*50}")
 			
-			# Save the current soil state AND plant data
-			saved_grid = [row[:] for row in self.soil_layer.grid]  # Deep copy
-			saved_plants = []  # Store plant data
+			# Save soil state and plant data
+			saved_grid = [row[:] for row in self.soil_layer.grid]
+			saved_plants = []
 
-			# Save existing plant information
 			for plant in self.soil_layer.plant_sprites.sprites():
 				plant_data = {
 					'plant_type': plant.plant_type,
@@ -720,145 +569,60 @@ class Level:
 				}
 				saved_plants.append(plant_data)
 
-			# Play transition with map loading INSIDE
+			# Play transition with loading
 			self.play_stage_transition_with_loading(saved_grid, saved_plants, saved_player_pos)
 			
-			# UNFREEZE PLAYER (restore original state)
+			# Unfreeze player
 			self.player.sleep = player_was_sleeping
-			
-			# Show notification
-			print(f"✓ Stage transition complete!")
 
-	def play_stage_transition_with_loading(self, saved_grid, saved_plants, saved_player_pos):
-		"""Play transition and load map during black screen"""
-		fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-		fade_surface.fill((0, 0, 0))
-		
-		# Fade out
-		for alpha in range(0, 255, 15):
-			pygame.event.clear()
-			fade_surface.set_alpha(alpha)
-			self.display_surface.blit(fade_surface, (0, 0))
-			pygame.display.update()
-			pygame.time.delay(30)
-		
-		# BLACK SCREEN - DO ALL LOADING HERE
-		self.display_surface.fill((0, 0, 0))
+	def create_soil_grid(self, map_path=None):
+		"""Create soil grid from the Farmable layer in the specified map"""
+		if map_path is None:
+			map_path = 'data/map.tmx'
 		
 		try:
-			font = pygame.font.Font('font/LycheeSoda.ttf', 48)
-			small_font = pygame.font.Font('font/LycheeSoda.ttf', 24)
-		except:
-			font = pygame.font.Font(None, 48)
-			small_font = pygame.font.Font(None, 24)
-		
-		# Show loading text
-		text = "Cleansing the Farm..."
-		text_surf = font.render(text, True, (255, 255, 255))
-		text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-		self.display_surface.blit(text_surf, text_rect)
-		
-		loading_text = "Loading..."
-		loading_surf = small_font.render(loading_text, True, (200, 200, 200))
-		loading_rect = loading_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60))
-		self.display_surface.blit(loading_surf, loading_rect)
-		
-		pygame.display.update()
-		pygame.event.clear()
-		
-		# === DO ALL THE LOADING HERE ===
-		
-		# Clear old soil layer completely
-		for sprite in list(self.soil_layer.soil_sprites.sprites()):
-			sprite.kill()
-		for sprite in list(self.soil_layer.water_sprites.sprites()):
-			sprite.kill()
-		for sprite in list(self.soil_layer.plant_sprites.sprites()):
-			sprite.kill()
-
-		# Reload the map with new stage
-		self.setup()
-		
-		# Restore player position
-		self.player.rect.center = saved_player_pos
-		self.player.pos = pygame.math.Vector2(saved_player_pos)
-		self.player.hitbox.center = self.player.rect.center
-		
-		# Create new soil layer for the new map
-		self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, self.current_map_path)
-		self.soil_layer.raining = self.raining
-		
-		# Update player's soil layer reference
-		if self.player:
-			self.player.soil_layer = self.soil_layer
-
-		# Restore the saved soil state to the new grid
-		for y in range(min(len(saved_grid), len(self.soil_layer.grid))):
-			for x in range(min(len(saved_grid[0]), len(self.soil_layer.grid[0]))):
-				old_cell = saved_grid[y][x]
-				new_cell = self.soil_layer.grid[y][x]
-				
-				if 'X' in old_cell and 'X' not in new_cell:
-					new_cell.append('X')
-				if 'W' in old_cell and 'W' not in new_cell:
-					new_cell.append('W')
-
-		# Recreate visual soil sprites
-		self.soil_layer.create_soil_tiles()
-
-		# Restore plants
-		for plant_data in saved_plants:
-			x, y = plant_data['pos']
-			if y < len(self.soil_layer.grid) and x < len(self.soil_layer.grid[0]):
-				for soil_sprite in self.soil_layer.soil_sprites.sprites():
-					if soil_sprite.rect.x == x * TILE_SIZE and soil_sprite.rect.y == y * TILE_SIZE:
-						self.soil_layer.grid[y][x].append('P')
-						
-						from soil import Plant
-						new_plant = Plant(
-							plant_data['plant_type'],
-							[self.all_sprites, self.soil_layer.plant_sprites, self.collision_sprites],
-							soil_sprite,
-							self.soil_layer.check_watered
-						)
-						new_plant.age = plant_data['age']
-						new_plant.image = new_plant.frames[int(new_plant.age)]
-						new_plant.rect = new_plant.image.get_rect(
-							midbottom=soil_sprite.rect.midbottom + pygame.math.Vector2(0, new_plant.y_offset)
-						)
-						if int(new_plant.age) >= new_plant.max_age:
-							new_plant.harvestable = True
-						break
-
-		# Recreate water sprites if raining
-		for sprite in list(self.soil_layer.water_sprites.sprites()):
-			sprite.kill()
+			tmx_data = load_pygame(map_path)
 			
-		if self.raining:
-			self.soil_layer.water_all()
-		
-		# Update quest
-		self.quest_manager.on_stage_progress()
-		
-		# === LOADING COMPLETE ===
-		
-		# Hold black screen for a moment
-		pygame.time.delay(500)
-		pygame.event.clear()
-		
-		# Fade in
-		for alpha in range(255, 0, -15):
-			pygame.event.clear()
-			fade_surface.set_alpha(alpha)
-			self.display_surface.fill('black')
-			self.all_sprites.custom_draw(self.player)
-			self.display_cleanse_progress()
-			self.display_surface.blit(fade_surface, (0, 0))
-			pygame.display.update()
-			pygame.time.delay(30)
-		
-		# Final event clear
-		pygame.event.clear()
+			# Get map dimensions
+			ground = pygame.image.load('graphics/world/ground.png')
+			h_tiles = ground.get_width() // TILE_SIZE
+			v_tiles = ground.get_height() // TILE_SIZE
+			
+			# Initialize empty grid
+			self.grid = [[[] for col in range(h_tiles)] for row in range(v_tiles)]
+			
+			# Look for Farmable layer
+			farmable_layer = None
+			for layer in tmx_data.visible_layers:
+				if hasattr(layer, 'name'):
+					if layer.name.lower() == 'farmable':
+						farmable_layer = layer
+						break
+			
+			if farmable_layer is None:
+				return
+			
+			# Mark farmable tiles
+			farmable_count = 0
+			if hasattr(farmable_layer, 'tiles'):
+				for x, y, surf in farmable_layer.tiles():
+					if surf and 0 <= y < v_tiles and 0 <= x < h_tiles:
+						self.grid[y][x].append('F')
+						farmable_count += 1
+			else:
+				for obj in farmable_layer:
+					x = int(obj.x // TILE_SIZE)
+					y = int(obj.y // TILE_SIZE)
+					if 0 <= y < v_tiles and 0 <= x < h_tiles:
+						self.grid[y][x].append('F')
+						farmable_count += 1
+			
+		except Exception as e:
+			# Create empty grid as fallback
+			ground = pygame.image.load('graphics/world/ground.png')
+			h_tiles = ground.get_width() // TILE_SIZE
+			v_tiles = ground.get_height() // TILE_SIZE
+			self.grid = [[[] for col in range(h_tiles)] for row in range(v_tiles)]
 
 	def play_stage_transition(self):
 		"""Play a visual transition when stage changes"""
