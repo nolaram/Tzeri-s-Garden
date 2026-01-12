@@ -76,7 +76,7 @@ class QuestManager:
                 title="First Harvest",
                 description="Learn the basics by growing corn",
                 objectives={'harvest_corn': 5},
-                rewards={'money': 30, 'seeds': {'tomato': 5}},
+                rewards={'money': 200, 'wards': 1},
                 next_quest=1
             ),
             Quest(
@@ -84,7 +84,7 @@ class QuestManager:
                 title="Diversify Your Farm",
                 description="Grow different crops",
                 objectives={'harvest_corn': 3, 'harvest_tomato': 3},
-                rewards={'money': 50, 'seeds': {'moon_melon': 3}},
+                rewards={'money': 200, 'wards': 1},
                 next_quest=2
             ),
             Quest(
@@ -153,6 +153,11 @@ class QuestManager:
         if 'seeds' in quest.rewards:
             for seed, amount in quest.rewards['seeds'].items():
                 self.player.seed_inventory[seed] += amount
+
+        # Give ward rewards
+        if 'wards' in quest.rewards:
+            self.player.ward_count += quest.rewards['wards']
+            print(f"🛡️ Received {quest.rewards['wards']} ward(s)!")
         
         # Mark as claimed
         quest.claimed = True

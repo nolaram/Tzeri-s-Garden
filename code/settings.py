@@ -47,17 +47,41 @@ GROW_SPEED = {
 }
 
 SALE_PRICES = {
-	'wood': 10,
+	'wood': 4,
 	'apple': 2,
-	'corn': 10,
-	'tomato': 20,
-    'moon_melon': 25,
-    'pumpkin': 20,
-	'cactus': 20
-    
+	'corn': {
+		'standard': 20,
+		'silver': 40,
+		'gold': 50,
+		'mythical': 100
+	},
+	'tomato': {
+		'standard': 50,
+		'silver': 70,
+		'gold': 80,
+		'mythical': 200
+	},
+	'moon_melon': {
+		'standard': 210,
+		'silver': 250,
+		'gold': 270,
+		'mythical': 400
+	},
+	'pumpkin': {
+		'standard': 160,
+		'silver': 180,
+		'gold': 200,
+		'mythical': 300
+	},
+	'cactus': {
+		'standard': 180,
+		'silver': 200,
+		'gold': 220,
+		'mythical': 300
+	}   
 }
 PURCHASE_PRICES = {
-	'corn': 30,
+	'corn': 10,
 	'tomato': 40,
     'moon_melon': 200,
     'pumpkin': 150,

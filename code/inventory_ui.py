@@ -75,7 +75,7 @@ class InventoryUI:
         )
         
         close_surf = self.font_small.render(
-            "Press 'I' or 'ESC' to close", True, (200, 200, 200)
+            "Press 'Tab' or 'ESC' to close", True, (200, 200, 200)
         )
         self.display_surface.blit(
             close_surf,
@@ -125,6 +125,12 @@ class InventoryUI:
         self.draw_category_items(
             resource_items, self.player.item_inventory, current_y
         )
+
+        # Draw ward count separately
+        current_y += 80
+        ward_text = f"Wards: {self.player.ward_count}"
+        ward_surf = self.font.render(ward_text, True, (150, 220, 255))
+        self.display_surface.blit(ward_surf, (self.x + 20, current_y))
         
         if hasattr(self.player, 'money'):
             money_surf = self.font.render(

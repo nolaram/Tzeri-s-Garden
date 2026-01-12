@@ -1,3 +1,4 @@
+from operator import pos
 import pygame 
 from settings import *
 from player import Player
@@ -9,13 +10,15 @@ from transition import TransitionStack
 from soil import SoilLayer
 from sky import Rain, Sky
 from random import randint
-from shop_ui import ShopUI
+from trader_menu import TraderMenu
 from pause_menu import PauseMenu
 from quest_system import QuestManager
 from inventory_ui import InventoryUI
 from time_system import TimeSystem
 from energy_system import EnergySystem
 from corruption_surge import CorruptionSurge
+from corruption_spread import CorruptionSpread, HealthSystem
+from ward_system import WardSystem
 
 class Level:
 	def __init__(self):
@@ -50,7 +53,25 @@ class Level:
 		# Energy system
 		self.energy_system = EnergySystem()	
 
+		# Health system (with death callback)
+		self.health_system = HealthSystem(on_death=self.on_player_death)
+
+		# Corruption spread system (initialize AFTER sprite groups)
+		try:
+			self.corruption_spread = CorruptionSpread(self.all_sprites, self.collision_sprites)
+			print("✓ Corruption spread system initialized")
+		except Exception as e:
+			print(f"✗ Failed to initialize corruption spread: {e}")
+			import traceback
+			traceback.print_exc()
+			self.corruption_spread = None
+
+		# Ward system
+		self.ward_system = WardSystem(self.all_sprites)
+		self.ward_system.corruption_spread_ref = self.corruption_spread  # ADD THIS LINE
+
 		self.setup()
+
 		if self.current_map_path:
 			print(f"\n=== Creating Soil Layer ===")
 			print(f"Using map path: {self.current_map_path}")
@@ -75,7 +96,7 @@ class Level:
 		self.sky = Sky()
 
 		# shop
-		self.shop_ui = ShopUI(self.player, self.toggle_shop)
+		self.trader_menu = TraderMenu(self.player, self.toggle_shop)
 		self.shop_active = False
 
 		# pause
@@ -95,7 +116,87 @@ class Level:
 		# Time system
 		self.time_system = TimeSystem()
 
+	def on_player_death(self):
+		"""Called when player dies"""
+		print("☠️ Player died! Restarting day...")
+		self.show_death_screen()
+		self.restart_same_day()
+
+	def show_death_screen(self):
+		"""Display 'You Died' screen"""
+		fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+		fade_surface.fill((0, 0, 0))
 		
+		# Fade to black
+		for alpha in range(0, 255, 15):
+			pygame.event.clear()
+			fade_surface.set_alpha(alpha)
+			self.display_surface.blit(fade_surface, (0, 0))
+			pygame.display.update()
+			pygame.time.delay(30)
+		
+		# Show "You Died" text
+		start_time = pygame.time.get_ticks()
+		duration = 3000  # 3 seconds
+		
+		while pygame.time.get_ticks() - start_time < duration:
+			pygame.event.clear()
+			self.display_surface.fill((0, 0, 0))
+			
+			try:
+				font = pygame.font.Font('font/LycheeSoda.ttf', 72)
+			except:
+				font = pygame.font.Font(None, 72)
+			
+			text = "You Died"
+			text_surf = font.render(text, True, (255, 50, 50))
+			text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+			
+			self.display_surface.blit(text_surf, text_rect)
+			pygame.display.update()
+			pygame.time.delay(30)
+		
+		# Fade back in
+		for alpha in range(255, 0, -15):
+			pygame.event.clear()
+			fade_surface.set_alpha(alpha)
+			self.display_surface.fill('black')
+			self.all_sprites.custom_draw(self.player)
+			self.display_surface.blit(fade_surface, (0, 0))
+			pygame.display.update()
+			pygame.time.delay(30)
+		
+		pygame.event.clear()
+
+	def restart_same_day(self):
+		"""Restart current day without advancing time"""
+		# Reset plants
+		self.soil_layer.update_plants()
+		
+		# Restore energy
+		self.energy_system.restore_full()
+		
+		# Restore health
+		self.health_system.restore_full()
+		
+		# Reset corruption surge
+		self.corruption_surge.reset_daily()
+		
+		# Remove water
+		self.soil_layer.remove_water()
+		
+		# Respawn apples
+		for tree in self.tree_sprites.sprites():
+			if hasattr(tree, 'create_fruit'):
+				if hasattr(tree, 'apple_sprite'):
+					for apple in tree.apple_sprites.sprites():
+						apple.kill()
+				tree.create_fruit()
+		
+		# Reset sky
+		self.sky.start_color = [255, 255, 255]
+		
+		# DON'T advance day - keep same day
 
 	def setup(self):
 		"""Load ALL layers from the current stage map"""
@@ -472,6 +573,9 @@ class Level:
 									toggle_shop=self.toggle_shop
 								)
 								self.player.energy_system = self.energy_system	
+								# Set health system reference
+								self.player.health_system = self.health_system
+								self.player.ward_system = self.ward_system
 							else:
 								self.player.pos = pygame.math.Vector2(start_pos)
 								self.player.rect.center = start_pos
@@ -570,10 +674,21 @@ class Level:
 				saved_plants.append(plant_data)
 
 			# Play transition with loading
-			self.play_stage_transition_with_loading(saved_grid, saved_plants, saved_player_pos)
+			self.play_stage_transition()
+			
+			# RELOAD THE MAP for the new stage
+			self.setup()
+			
+			# Restore player position
+			if self.player:
+				self.player.pos = pygame.math.Vector2(saved_player_pos)
+				self.player.rect.center = saved_player_pos
+				self.player.hitbox.center = self.player.rect.center
 			
 			# Unfreeze player
 			self.player.sleep = player_was_sleeping
+			
+			print(f"✅ Progressed to stage: {self.cleanse_stage}")
 
 	def create_soil_grid(self, map_path=None):
 		"""Create soil grid from the Farmable layer in the specified map"""
@@ -700,14 +815,23 @@ class Level:
 		# Advance to next day
 		self.time_system.advance_to_next_day()
 		
-		# plants
-		self.soil_layer.update_plants()
+		# plants (grows on real time now)
+		#self.soil_layer.update_plants(0)
 
 		# Restore energy
 		self.energy_system.restore_full()
 
 		# Reset corruption surge for new day
 		self.corruption_surge.reset_daily()
+
+		# Restore health
+		self.health_system.restore_full()
+		
+		# Punish day sleep ONLY if sleeping during day (between 6 AM and 11 PM)
+		# Player should sleep at night (after 11 PM or before 6 AM) to avoid penalty
+		if 6 <= self.time_system.hour < 23:
+			self.corruption_spread.punish_day_sleep()
+			print(f"⚠️ Slept during daytime (hour {self.time_system.hour}) - corruption penalty applied!")
 
 		# soil
 		self.soil_layer.remove_water()
@@ -728,26 +852,42 @@ class Level:
 		self.sky.start_color = [255,255,255]
 
 	def plant_collision(self):
-		"""
-		Handles player harvesting plants safely.
-		Also adds cleanse points when crops are harvested.
-		"""
+		"""Handles player harvesting plants with quality"""
 		if not self.soil_layer.plant_sprites:
 			return
 
 		for plant in self.soil_layer.plant_sprites.sprites():
-			if hasattr(plant, "harvestable") and plant.harvestable and plant.rect.colliderect(self.player.hitbox):
-				# Use energy for harvesting
-				if not self.energy_system.use_energy('harvest'):
-					continue  # Not enough energy, skip this harvest
+			if plant.harvestable and plant.rect.colliderect(self.player.hitbox):
 				
-				# 1️⃣ Give player the plant
+				# Store crop with quality
+				crop_key = f"{plant.plant_type}_{plant.quality}"
+				
+				# Add to inventory (we'll need a new inventory structure)
+				if not hasattr(self.player, 'crop_inventory'):
+					self.player.crop_inventory = {}
+				
+				if crop_key not in self.player.crop_inventory:
+					self.player.crop_inventory[crop_key] = 0
+				
+				self.player.crop_inventory[crop_key] += 1
+				
+				# Also add to regular inventory for backwards compatibility
 				self.player_add(plant.plant_type)
+
+				# Show quality notification
+				quality_text = {
+					'standard': '',
+					'silver': '✨ Silver!',
+					'gold': '⭐ Gold!',
+					'mythical': '💎 MYTHICAL!'
+				}
+				if plant.quality != 'standard':
+					print(f"🌟 Harvested {plant.plant_type}: {quality_text[plant.quality]}")
 
 				# Update quest progress
 				self.quest_manager.on_harvest(plant.plant_type)
 
-				# Add cleanse points based on crop type
+				# Add cleanse points
 				cleanse_values = {
 					'corn': 5,
 					'tomato': 8,
@@ -758,22 +898,19 @@ class Level:
 				points = cleanse_values.get(plant.plant_type, 5)
 				self.add_cleanse_points(points)
 
-				# 2️⃣ Remove the plant sprite
+				# Remove the plant
 				plant.kill()
 
-				# 3️⃣ Remove 'P' from the soil grid safely
+				# Remove 'P' from grid
 				cell_y = plant.rect.centery // TILE_SIZE
 				cell_x = plant.rect.centerx // TILE_SIZE
 
-				# Ensure coordinates are in bounds
 				if 0 <= cell_y < len(self.soil_layer.grid) and 0 <= cell_x < len(self.soil_layer.grid[0]):
 					cell = self.soil_layer.grid[cell_y][cell_x]
-
-					# Remove all 'P' in case multiple entries exist
 					while 'P' in cell:
 						cell.remove('P')
 
-				# 4️⃣ Spawn particle effect
+				# Spawn particle effect
 				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
 
 	def run(self, dt, events):
@@ -817,6 +954,9 @@ class Level:
 
 		if self.player.timers['tool use'].active or self.player.timers['seed use'].active:
 			self.draw_grid_selection()
+
+		# Draw ward radius overlay when hovering over placed wards
+		self.draw_ward_radius_on_hover()
 		
 		# Update player's knowledge about camera offset to make spatial mouse control possible
 		if hasattr(self, 'player'):
@@ -827,17 +967,24 @@ class Level:
 			# let the pause menu handle its events and drawing (use filtered events)
 			self.pause.update(filtered_events)
 		elif self.shop_active:
-			self.shop_ui.draw(filtered_events)  # Pass events for mouse handling
+			self.trader_menu.update(dt)
+			self.trader_menu.handle_input(filtered_events)
+			self.trader_menu.draw()
 		elif self.inventory_active:
 			# Inventory is open - pause game updates
 			pass
 		else:
 			self.all_sprites.update(dt)
+			self.soil_layer.update_plants(dt)
 			self.plant_collision()
 			self.quest_manager.update(dt)
-			self.time_system.update(dt, self.corruption_surge)  # Update time system
-			self.energy_system.update(dt)  # Update energy system
-			self.corruption_surge.update(dt)  # Update corruption surge
+			self.time_system.update(dt, self.corruption_surge)
+			self.energy_system.update(dt)
+			self.health_system.update(dt)
+			self.corruption_surge.update(dt)
+			if self.corruption_spread:
+				self.corruption_spread.update(dt, self.soil_layer, self.player, self.health_system, self.ward_system)
+
 
 		# weather
 		if hasattr(self, 'player'):
@@ -856,12 +1003,22 @@ class Level:
 		# Display time and day
 		self.time_system.draw()
 
+		# Display health bar
+		self.health_system.draw()
+
+		# Display energy bar
+		self.energy_system.draw()
+
 		# Display energy bar
 		self.energy_system.draw()
 
 		self.corruption_surge.draw()
 		self.corruption_surge.draw_report()
 		self.corruption_surge.handle_report_input(events)
+
+		# Display corruption spread notifications
+		if self.corruption_spread:
+			self.corruption_spread.draw()
 
 		# transition overlay
 		if hasattr(self, 'player') and self.player.sleep:
@@ -948,6 +1105,82 @@ class Level:
 		current_tile_rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 		offset = self.all_sprites.offset
 		pygame.draw.rect(self.display_surface, 'white', current_tile_rect.move(-offset), 3)
+
+	def draw_ward_preview(self):
+		"""Draw ward placement preview at mouse/target position"""
+		# Get target position
+		target_pos = self.player.target_pos
+		grid_x = int(target_pos.x // TILE_SIZE)
+		grid_y = int(target_pos.y // TILE_SIZE)
+		
+		# Draw protection radius preview (6 tiles in each direction)
+		protection_radius = 6
+		offset = self.all_sprites.offset
+		
+		for dx in range(-protection_radius, protection_radius + 1):
+			for dy in range(-protection_radius, protection_radius + 1):
+				# Calculate distance for circular effect
+				distance = (dx * dx + dy * dy) ** 0.5
+				if distance <= protection_radius:
+					tile_x = (grid_x + dx) * TILE_SIZE
+					tile_y = (grid_y + dy) * TILE_SIZE
+					
+					# Semi-transparent blue overlay
+					preview_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+					alpha = int(80 * (1 - distance / protection_radius))  # Fade towards edges
+					preview_surf.fill((100, 200, 255, alpha))
+					
+					preview_rect = pygame.Rect(tile_x, tile_y, TILE_SIZE, TILE_SIZE)
+					self.display_surface.blit(preview_surf, preview_rect.move(-offset))
+		
+		# Draw center ward indicator (brighter)
+		center_x = grid_x * TILE_SIZE
+		center_y = grid_y * TILE_SIZE
+		center_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+		
+		# Draw glowing circle in center
+		pygame.draw.circle(center_surf, (150, 220, 255, 150), (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 3)
+		pygame.draw.circle(center_surf, (200, 240, 255, 200), (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 4)
+		
+		center_rect = pygame.Rect(center_x, center_y, TILE_SIZE, TILE_SIZE)
+		self.display_surface.blit(center_surf, center_rect.move(-offset))
+
+	def draw_ward_radius_on_hover(self):
+		"""Draw ward radius when hovering cursor over placed wards"""
+		mouse_pos = pygame.mouse.get_pos()
+		mouse_world_pos = pygame.math.Vector2(mouse_pos) + self.all_sprites.offset
+		
+		# Check if mouse is hovering over any ward
+		for ward in self.ward_system.ward_sprites.sprites():
+			ward_rect = ward.rect
+			if ward_rect.collidepoint(mouse_world_pos):
+				# Draw protection radius for this ward
+				protection_radius = ward.protection_radius
+				offset = self.all_sprites.offset
+				
+				for dx in range(-protection_radius, protection_radius + 1):
+					for dy in range(-protection_radius, protection_radius + 1):
+						# Calculate distance for circular effect
+						distance = (dx * dx + dy * dy) ** 0.5
+						if distance <= protection_radius:
+							tile_x = (ward.grid_x + dx) * TILE_SIZE
+							tile_y = (ward.grid_y + dy) * TILE_SIZE
+							
+							# Semi-transparent blue overlay
+							preview_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+							alpha = int(100 * (1 - distance / (protection_radius + 1)))
+							preview_surf.fill((100, 200, 255, alpha))
+							
+							preview_rect = pygame.Rect(tile_x, tile_y, TILE_SIZE, TILE_SIZE)
+							self.display_surface.blit(preview_surf, preview_rect.move(-offset))
+				
+				# Highlight the ward itself
+				highlight_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+				pygame.draw.circle(highlight_surf, (255, 255, 255, 100), (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 2)
+				highlight_rect = ward_rect.move(-offset)
+				self.display_surface.blit(highlight_surf, highlight_rect)
+				
+				break  # Only show one ward radius at a time
 
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):

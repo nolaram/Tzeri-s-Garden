@@ -10,8 +10,27 @@ class Overlay:
 
 		# imports 
 		overlay_path = 'graphics/overlay/'
-		self.tools_surf = {tool: pygame.image.load(f'{overlay_path}{tool}.png').convert_alpha() for tool in player.tools}
-		self.seeds_surf = {seed: pygame.image.load(f'{overlay_path}{seed}.png').convert_alpha() for seed in player.seeds}
+		# Load tools (only hoe, axe, water - NOT ward)
+		self.tools_surf = {}
+		for tool in ['hoe', 'axe', 'water']:  # Hardcode the tools that have overlay images
+			try:
+				self.tools_surf[tool] = pygame.image.load(f'{overlay_path}{tool}.png').convert_alpha()
+			except Exception as e:
+				print(f"❌ Failed to load {tool}.png: {e}")
+				placeholder = pygame.Surface((64, 64))
+				placeholder.fill((100, 100, 100))
+				self.tools_surf[tool] = placeholder
+
+		# Load seeds
+		self.seeds_surf = {}
+		for seed in player.seeds:
+			try:
+				self.seeds_surf[seed] = pygame.image.load(f'{overlay_path}{seed}.png').convert_alpha()
+			except Exception as e:
+				print(f"❌ Failed to load {seed}.png: {e}")
+				placeholder = pygame.Surface((64, 64))
+				placeholder.fill((150, 100, 50))
+				self.seeds_surf[seed] = placeholder
 
 		# objective box
 		try:
@@ -40,18 +59,50 @@ class Overlay:
 		if cur:
 			lines.append(cur)
 		return lines
+	
+	def display_ward_count(self):
+		"""Display ward count next to tool overlay"""
+		font = pygame.font.Font('font/LycheeSoda.ttf', 18)
+		ward_text = f"Wards: {self.player.ward_count}"
+		ward_surf = font.render(ward_text, False, 'White')
+		
+		# Position next to tool overlay
+		tool_pos = OVERLAY_POSITIONS['tool']
+		ward_rect = ward_surf.get_rect(midtop=(tool_pos[0], tool_pos[1] + 10))
+		
+		# Background
+		bg_rect = ward_rect.inflate(10, 6)
+		pygame.draw.rect(self.display_surface, 'Black', bg_rect, 0, 4)
+		pygame.draw.rect(self.display_surface, 'White', bg_rect, 2, 4)
+		self.display_surface.blit(ward_surf, ward_rect)
 
 	def display(self, dt: float = 0, events = None):
 
-		# tool
-		tool_surf = self.tools_surf[self.player.selected_tool]
-		tool_rect = tool_surf.get_rect(midbottom = OVERLAY_POSITIONS['tool'])
-		self.display_surface.blit(tool_surf,tool_rect)
+		# tool (only display if not ward)
+		if self.player.selected_tool in self.tools_surf:
+			tool_surf = self.tools_surf[self.player.selected_tool]
+			tool_rect = tool_surf.get_rect(midbottom = OVERLAY_POSITIONS['tool'])
+			self.display_surface.blit(tool_surf,tool_rect)
 
 		# seeds
 		seed_surf = self.seeds_surf[self.player.selected_seed]
 		seed_rect = seed_surf.get_rect(midbottom = OVERLAY_POSITIONS['seed'])
 		self.display_surface.blit(seed_surf,seed_rect)
+		# ward count display
+		self.display_ward_count()
+
+		# Ward count display
+		if hasattr(self.player, 'ward_count'):
+			ward_text = f"Wards: {self.player.ward_count}"
+			ward_surf = self.objective_font.render(ward_text, True, (150, 220, 255))
+			ward_rect = ward_surf.get_rect(midbottom=(OVERLAY_POSITIONS['seed'][0] + 100, SCREEN_HEIGHT - 10))
+			
+			# Background
+			bg_rect = ward_rect.inflate(10, 4)
+			pygame.draw.rect(self.display_surface, (0, 0, 0), bg_rect, border_radius=4)
+			pygame.draw.rect(self.display_surface, (150, 220, 255), bg_rect, 2, border_radius=4)
+			
+			self.display_surface.blit(ward_surf, ward_rect)
 
 		# objective box (show once at level start)
 		if self.show_objective and self.objective_surf:

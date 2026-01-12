@@ -28,32 +28,103 @@ class Plant(pygame.sprite.Sprite):
 		self.soil = soil
 		self.check_watered = check_watered
 
-		# plant growing 
-		self.age = 0
+		# Time-based growing (in seconds)
+		self.growth_times = {
+			'corn': 60,        # 1 minute
+			'tomato': 90,      # 1.5 minutes
+			'moon_melon': 120, # 2 minutes
+			'pumpkin': 120,    # 2 minutes
+			'cactus': 180      # 3 minutes
+		}
+		
+		self.total_grow_time = self.growth_times.get(plant_type, 60)
+		self.current_grow_time = 0
 		self.max_age = len(self.frames) - 1
-		self.grow_speed = GROW_SPEED.get(plant_type, 0.5)
 		self.harvestable = False
 		
+		# Quality/Rating system
+		self.quality = 'standard'  # standard, silver, gold, mythical
+		self.quality_colors = {
+			'standard': (255, 255, 255),
+			'silver': (192, 192, 192),
+			'gold': (255, 215, 0),
+			'mythical': (138, 43, 226)
+		}
+		
 		# sprite setup
-		self.image = self.frames[self.age]
+		self.age = 0
+		self.image = self.frames[0]  # Start at phase 0
 		self.y_offset = -16 if plant_type == 'corn' else -8
 		self.rect = self.image.get_rect(midbottom = soil.rect.midbottom + pygame.math.Vector2(0,self.y_offset))
 		self.z = LAYERS['ground plant']
 
-	def grow(self):
+	def grow(self, dt):
+		"""Grow plant based on delta time"""
 		if self.check_watered(self.rect.center):
-			self.age += self.grow_speed
-
-			if int(self.age) > 0:
-				self.z = LAYERS['main']
-				self.hitbox = self.rect.copy().inflate(-26,-self.rect.height * 0.4)
-
-			if self.age >= self.max_age:
-				self.age = self.max_age
+			# Add time
+			self.current_grow_time += dt
+			
+			# Calculate growth stage (0, 1, 2, 3)
+			# Phase 0: 0-25% of time
+			# Phase 1: 25-50% of time
+			# Phase 2: 50-75% of time
+			# Phase 3: 75-100% of time (harvestable)
+			growth_percent = min(self.current_grow_time / self.total_grow_time, 1.0)
+			new_age = int(growth_percent * (self.max_age + 1))
+			
+			# Ensure we don't exceed max age
+			new_age = min(new_age, self.max_age)
+			
+			# Update visual if age changed
+			if new_age != self.age:
+				self.age = new_age
+				self.image = self.frames[self.age]
+				self.rect = self.image.get_rect(midbottom = self.soil.rect.midbottom + pygame.math.Vector2(0,self.y_offset))
+				
+				# Change Z layer when growing
+				if self.age > 0:
+					self.z = LAYERS['main']
+					self.hitbox = self.rect.copy().inflate(-26,-self.rect.height * 0.4)
+			
+			# Check if fully grown
+			if self.current_grow_time >= self.total_grow_time:
 				self.harvestable = True
-
-			self.image = self.frames[int(self.age)]
-			self.rect = self.image.get_rect(midbottom = self.soil.rect.midbottom + pygame.math.Vector2(0,self.y_offset))
+				
+				# Determine quality when fully grown (only once)
+				if self.quality == 'standard' and self.age == self.max_age:
+					self.determine_quality()
+	
+	def determine_quality(self):
+		"""Randomly determine crop quality when harvested"""
+		import random
+		roll = random.random()
+		
+		if roll < 0.60:  # 60% chance
+			self.quality = 'standard'
+		elif roll < 0.85:  # 25% chance
+			self.quality = 'silver'
+		elif roll < 0.97:  # 12% chance
+			self.quality = 'gold'
+		else:  # 3% chance
+			self.quality = 'mythical'
+	
+	def draw_quality_indicator(self, surface, camera_offset):
+		"""Draw quality indicator above plant"""
+		if not self.harvestable or self.quality == 'standard':
+			return
+		
+		# Draw sparkle effect for rare+ quality
+		color = self.quality_colors[self.quality]
+		
+		# Position above plant
+		indicator_pos = (
+			self.rect.centerx - camera_offset.x,
+			self.rect.top - 10 - camera_offset.y
+		)
+		
+		# Draw small circle indicator
+		pygame.draw.circle(surface, color, (int(indicator_pos[0]), int(indicator_pos[1])), 4)
+		pygame.draw.circle(surface, (255, 255, 255), (int(indicator_pos[0]), int(indicator_pos[1])), 2)
 
 class SoilLayer:
 	def __init__(self, all_sprites, collision_sprites, map_path=None):
@@ -212,9 +283,9 @@ class SoilLayer:
 		
 		return False  # No soil found at target position
 
-	def update_plants(self):
+	def update_plants(self, dt):
 		for plant in self.plant_sprites.sprites():
-			plant.grow()
+			plant.grow(dt)
 
 	def create_soil_tiles(self):
 		self.soil_sprites.empty()

@@ -10,6 +10,7 @@ class Player(pygame.sprite.Sprite):
 		self.import_assets()
 		self.status = 'down_idle'
 		self.frame_index = 0
+		self.ward_count = 0
 
 		# general setup
 		self.image = self.animations[self.status][self.frame_index]
@@ -63,6 +64,12 @@ class Player(pygame.sprite.Sprite):
 		}
 		self.money = 200
 
+		# Ward inventory
+		self.ward_count = 1  # Start with 1 ward
+
+		# Crop inventory (with quality)
+		self.crop_inventory = {}
+
 		# interaction
 		self.tree_sprites = tree_sprites
 		self.interaction = interaction
@@ -91,6 +98,15 @@ class Player(pygame.sprite.Sprite):
 				if self.energy_system.use_energy('water'):
 					self.soil_layer.water(self.target_pos)
 					self.watering.play()
+
+			elif self.selected_tool == 'ward':
+				if self.ward_count > 0:
+					grid_x = int(self.target_pos.x // TILE_SIZE)
+					grid_y = int(self.target_pos.y // TILE_SIZE)
+					if hasattr(self, 'ward_system') and self.ward_system:
+						if self.ward_system.place_ward(grid_x, grid_y):
+							self.ward_count -= 1
+							print(f"🛡️ Ward placed! Remaining: {self.ward_count}")
 		else:
 			# Fallback if energy system not available
 			if self.selected_tool == 'hoe':
@@ -140,14 +156,20 @@ class Player(pygame.sprite.Sprite):
 
 	def import_assets(self):
 		self.animations = {'up': [],'down': [],'left': [],'right': [],
-						   'right_idle':[],'left_idle':[],'up_idle':[],'down_idle':[],
-						   'right_hoe':[],'left_hoe':[],'up_hoe':[],'down_hoe':[],
-						   'right_axe':[],'left_axe':[],'up_axe':[],'down_axe':[],
-						   'right_water':[],'left_water':[],'up_water':[],'down_water':[]}
+						'right_idle':[],'left_idle':[],'up_idle':[],'down_idle':[],
+						'right_hoe':[],'left_hoe':[],'up_hoe':[],'down_hoe':[],
+						'right_axe':[],'left_axe':[],'up_axe':[],'down_axe':[],
+						'right_water':[],'left_water':[],'up_water':[],'down_water':[]}
 
 		for animation in self.animations.keys():
 			full_path = 'graphics/character/' + animation
 			self.animations[animation] = import_folder(full_path)
+		
+		# Reuse water animations for ward (since you probably don't have ward sprites yet)
+		self.animations['right_ward'] = self.animations['right_water']
+		self.animations['left_ward'] = self.animations['left_water']
+		self.animations['up_ward'] = self.animations['up_water']
+		self.animations['down_ward'] = self.animations['down_water']
 
 	def animate(self,dt):
 		self.frame_index += 4 * dt
@@ -185,10 +207,21 @@ class Player(pygame.sprite.Sprite):
 
 			# tool use
 
-			if buttons[0] or keys[pygame.K_SPACE]:
-				use_tool = False
+			if buttons[0] or keys[pygame.K_SPACE] or keys[pygame.K_CAPSLOCK]:
+				use_tool = False  # ADD THIS LINE
+				
+				# CAPS LOCK forces ward tool
+				if keys[pygame.K_CAPSLOCK]:
+					if self.ward_count > 0:
+						# Temporarily switch to ward
+						self.selected_tool = 'ward'
+						use_tool = True
+						self.timers['tool use'].activate()
+						self.direction = pygame.math.Vector2()
+						self.frame_index = 0
+						self.get_target_pos()
 
-				if buttons[0]:
+				elif buttons[0]:
 					# Calculate world mouse position
 					mouse_world_pos = pygame.mouse.get_pos() + self.offset
 					# Check distance betweem player and mouse
@@ -208,12 +241,20 @@ class Player(pygame.sprite.Sprite):
 				elif keys[pygame.K_SPACE]:
 						use_tool = True
 
+<<<<<<< HEAD
 				if use_tool:
 					if not self.timers['tool use'].active:
 						self.timers['tool use'].activate()
 						self.direction = pygame.math.Vector2()
 						self.frame_index = 0
 						self.get_target_pos()
+=======
+				if use_tool and not keys[pygame.K_CAPSLOCK]:
+					self.timers['tool use'].activate()
+					self.direction = pygame.math.Vector2()
+					self.frame_index = 0
+					self.get_target_pos()
+>>>>>>> 12d7871 (Added features)
 
 			# change tool
 				if keys[pygame.K_q] and not self.timers['tool switch'].active:
