@@ -35,9 +35,9 @@ class TimeSystem:
                 self.minute = 0
                 self.hour += 1
                 
-                # Try to trigger corruption surge each hour
+                # Try to trigger corruption surge each hour (passing current day)
                 if corruption_surge:
-                    corruption_surge.try_trigger_surge(self.hour)
+                    corruption_surge.try_trigger_surge(self.hour, self.day)
                 
                 # Handle hour overflow (new day)
                 if self.hour >= 24:

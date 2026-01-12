@@ -40,14 +40,14 @@ APPLE_POS = {
 
 GROW_SPEED = {
 	'corn': 1,
-	'tomato': 0.7,
-    'moon_melon': 1,
-    'pumpkin': 1,
-    'cactus': 5
+	'tomato': 1,
+    'moon_melon': 0.5,
+    'pumpkin': 0.7,
+    'cactus': 0.6
 }
 
 SALE_PRICES = {
-	'wood': 4,
+	'wood': 10,
 	'apple': 2,
 	'corn': 10,
 	'tomato': 20,
@@ -57,9 +57,9 @@ SALE_PRICES = {
     
 }
 PURCHASE_PRICES = {
-	'corn': 4,
-	'tomato': 5,
-    'moon_melon': 15,
-    'pumpkin': 10,
-    'cactus': 10
+	'corn': 30,
+	'tomato': 40,
+    'moon_melon': 200,
+    'pumpkin': 150,
+    'cactus': 170
 }
