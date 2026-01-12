@@ -21,6 +21,7 @@ from corruption_spread import CorruptionSpread, HealthSystem
 from ward_system import WardSystem
 from stage_cutscene import StageCutscene
 from save_load_menu import SaveLoadMenu
+from dog_npc import DogNPC
 
 class Level:
 	def __init__(self):
@@ -79,6 +80,9 @@ class Level:
 		# save load
 		self.save_load_menu = SaveLoadMenu(self, self.toggle_save_load_menu)
 		self.save_load_active = False
+
+		self.dog = None
+		self.dog_spawned = False
 
 		self.setup()
 
@@ -987,6 +991,21 @@ class Level:
 				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
 
 	def run(self, dt, events):
+
+		if not self.dog_spawned and self.time_system.day >= 1:    
+				spawn_pos = (self.player.rect.centerx + 100, self.player.rect.centery)    
+				self.dog = DogNPC(
+				pos=spawn_pos,
+				groups=[],
+				collision_sprites=self.collision_sprites,        
+				corruption_system=self.corruption_spread
+				)
+				self.dog_spawned = True
+				print("🐕 Dog has appeared!")
+
+		if self.dog:
+			self.dog.update(dt, self.player)
+
 		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
 		filtered_events = []
 		for event in events:
@@ -1033,11 +1052,44 @@ class Level:
 				self.quick_load()
 				continue
 			
+			
+			if event.type == pygame.KEYDOWN and event.key == pygame.K_f and self.dog:    
+					if self.dog.can_feed(self.player):       
+						for crop in ['corn', 'tomato', 'moon_melon', 'pumpkin', 'cactus']:
+							if self.player.item_inventory.get(crop, 0) > 0:                
+								self.player.item_inventory[crop] -= 1                 
+								self.dog.feed(crop)
+								break
+
+				
+
+
+								
+
+
+
+
+
+
+	
+
+
+
 			filtered_events.append(event)
 
 		# drawing logic
 		self.display_surface.fill('black')
 		self.all_sprites.custom_draw(self.player)
+
+
+		if self.dog:    
+			camera_offset = self.all_sprites.offset    
+			dog_screen_pos = self.dog.rect.move(-camera_offset.x, -camera_offset.y)     
+			self.display_surface.blit(self.dog.image, dog_screen_pos)
+
+
+
+
 
 		if self.player.timers['tool use'].active or self.player.timers['seed use'].active:
 			self.draw_grid_selection()
@@ -1071,6 +1123,8 @@ class Level:
 			# Inventory is open - pause game updates
 			pass
 		else:
+			if self.dog:
+				self.dog.update(dt,	self.player)
 			self.all_sprites.update(dt)
 			self.soil_layer.update_plants(dt)
 			self.plant_collision()
@@ -1143,6 +1197,12 @@ class Level:
 		# draw pause menu on top
 		if self.pause_active:
 			self.pause.draw()
+
+
+		if self.dog:
+			camera_offset = self.all_sprites.offset  # Your camera offset    
+			self.dog.draw_interaction_prompt(camera_offset, self.player)
+
 
 	def display_cleanse_progress(self):
 		"""Display the current cleanse stage and progress"""
