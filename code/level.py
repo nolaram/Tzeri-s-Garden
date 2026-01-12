@@ -9,7 +9,7 @@ from transition import TransitionStack
 from soil import SoilLayer
 from sky import Rain, Sky
 from random import randint
-from menu import Menu
+from shop_ui import ShopUI
 from pause_menu import PauseMenu
 from quest_system import QuestManager
 from inventory_ui import InventoryUI
@@ -75,7 +75,7 @@ class Level:
 		self.sky = Sky()
 
 		# shop
-		self.menu = Menu(self.player, self.toggle_shop)
+		self.shop_ui = ShopUI(self.player, self.toggle_shop)
 		self.shop_active = False
 
 		# pause
@@ -1063,7 +1063,7 @@ class Level:
 			# let the pause menu handle its events and drawing (use filtered events)
 			self.pause.update(filtered_events)
 		elif self.shop_active:
-			self.menu.update()
+			self.shop_ui.draw(filtered_events)  # Pass events for mouse handling
 		elif self.inventory_active:
 			# Inventory is open - pause game updates
 			pass
@@ -1080,7 +1080,7 @@ class Level:
 			self.overlay.display(dt, filtered_events)
 		if self.raining and not (self.shop_active or self.pause_active or self.inventory_active):
 			self.rain.update()
-		self.sky.display(dt)
+		self.sky.display(self.time_system, self.corruption_surge)
 
 		# Quest UI
 		if not self.inventory_active:
@@ -1095,12 +1095,9 @@ class Level:
 		# Display energy bar
 		self.energy_system.draw()
 
-		# Display corruption surge effects
 		self.corruption_surge.draw()
-
-		# Display corruption surge report if active
 		self.corruption_surge.draw_report()
-
+		self.corruption_surge.handle_report_input(events)
 
 		# transition overlay
 		if hasattr(self, 'player') and self.player.sleep:

@@ -336,5 +336,7 @@ class CorruptionSurge:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.close_button_rect.collidepoint(event.pos):
                     self.report_active = False
+                    self.close_button_rect = None
+
 
 
