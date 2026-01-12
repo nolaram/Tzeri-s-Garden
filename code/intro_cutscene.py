@@ -2,7 +2,7 @@ import pygame
 from settings import *
 
 class IntroCutscene:
-	def __init__(self):
+	def __init__(self, intro):
 		self.display_surface = pygame.display.get_surface()
 		self.font_large = pygame.font.Font('font/LycheeSoda.ttf', 36)
 		self.font_small = pygame.font.Font('font/LycheeSoda.ttf', 20)
@@ -27,6 +27,20 @@ class IntroCutscene:
 		# Calculate total duration
 		for scene in self.script:
 			self.total_duration += scene["duration"] + scene["fade_in"] + scene["fade_out"]
+
+		self.music = None
+		music_paths = {
+			'intro': 'audio/intro_cutscene.mp3',  # Change this path to your music file
+		}
+		music_path = music_paths.get(intro)
+		if music_path:
+			try:
+				self.music = pygame.mixer.Sound(music_path)
+				self.music.set_volume(0.3)  # Adjust volume (0.0 to 1.0)
+				self.music.play(loops=0)  # loops=-1 for infinite loop
+			except Exception as e:
+				print(f"Could not load cutscene music: {music_path} - {e}")
+				self.music = None
 	
 	def draw_text_multiline(self, text, font, color, center_pos):
 		"""Draw multi-line text centered"""

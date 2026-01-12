@@ -19,6 +19,7 @@ from energy_system import EnergySystem
 from corruption_surge import CorruptionSurge
 from corruption_spread import CorruptionSpread, HealthSystem
 from ward_system import WardSystem
+from stage_cutscene import StageCutscene
 
 class Level:
 	def __init__(self):
@@ -48,6 +49,10 @@ class Level:
 
 		# Initialize player as None first
 		self.player = None
+		# Stage cutscene system
+		self.stage_cutscene = None
+		self.pending_cutscene_stage = None
+		self.has_shown_intro = False
 		self.soil_layer = None
 
 		# Energy system
@@ -72,13 +77,19 @@ class Level:
 
 		self.setup()
 
+		# Create soil layer AFTER setup
 		if self.current_map_path:
 			print(f"\n=== Creating Soil Layer ===")
 			print(f"Using map path: {self.current_map_path}")
 			self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, self.current_map_path)
-			# Update player's soil layer reference
 			if self.player:
 				self.player.soil_layer = self.soil_layer
+		else:
+			# Fallback
+			self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, 'data/map.tmx')
+			if self.player:
+				self.player.soil_layer = self.soil_layer
+
 		# Corruption surge system
 		self.corruption_surge = CorruptionSurge(self.soil_layer)
 
@@ -106,8 +117,6 @@ class Level:
 		# music
 		self.success = pygame.mixer.Sound('audio/success.wav')
 		self.success.set_volume(0.3)
-		self.music = pygame.mixer.Sound('audio/music.mp3')
-		self.music.play(loops = -1)
 
 		# Inventory UI
 		self.inventory_ui = InventoryUI(self.player)
@@ -118,7 +127,6 @@ class Level:
 
 	def on_player_death(self):
 		"""Called when player dies"""
-		print("☠️ Player died! Restarting day...")
 		self.show_death_screen()
 		self.restart_same_day()
 
@@ -661,7 +669,7 @@ class Level:
 			# Change stage
 			self.cleanse_stage = stage_order[current_index + 1]
 			
-			# Save soil state and plant data
+			# Save soil state and plant data BEFORE transition
 			saved_grid = [row[:] for row in self.soil_layer.grid]
 			saved_plants = []
 
@@ -669,26 +677,76 @@ class Level:
 				plant_data = {
 					'plant_type': plant.plant_type,
 					'age': plant.age,
-					'pos': (plant.soil.rect.x // TILE_SIZE, plant.soil.rect.y // TILE_SIZE)
+					'pos': (plant.rect.x // TILE_SIZE, plant.rect.y // TILE_SIZE),
+					'current_grow_time': plant.current_grow_time,
+					'harvestable': plant.harvestable,
+					'quality': getattr(plant, 'quality', 'standard')
 				}
 				saved_plants.append(plant_data)
 
-			# Play transition with loading
-			self.play_stage_transition()
-			
-			# RELOAD THE MAP for the new stage
+			# RELOAD THE MAP for the new stage (sprites load in background)
 			self.setup()
-			
-			# Restore player position
-			if self.player:
-				self.player.pos = pygame.math.Vector2(saved_player_pos)
-				self.player.rect.center = saved_player_pos
-				self.player.hitbox.center = self.player.rect.center
-			
+
+			# Create new soil layer for new stage
+			if self.current_map_path:
+				self.soil_layer = SoilLayer(self.all_sprites, self.collision_sprites, self.current_map_path)
+				if self.player:
+					self.player.soil_layer = self.soil_layer
+
+			# RESTORE plants after setup
+			if self.soil_layer and saved_plants:
+				self.soil_layer.restore_plants(saved_plants, saved_grid)
+
+			# Apply cleansed stage effects if reached
+			self.apply_cleansed_stage_effects()
+
 			# Unfreeze player
 			self.player.sleep = player_was_sleeping
 			
-			print(f"✅ Progressed to stage: {self.cleanse_stage}")
+			# Set pending cutscene for this stage
+			self.pending_cutscene_stage = self.cleanse_stage
+
+	def set_stage_dialogue(self, stage):
+		"""Set dialogue for stage transition"""
+		dialogues = {
+			'stage1': [
+				"The land notices your effort.",
+				"The earth stirs.",
+				"It has not been cared for in a long time."
+			],
+			'stage2': [
+				"The land remembers what it once was.",
+				"This place once fed many.",
+				"It remembers gentle hands."
+			],
+			'stage3': [
+				"The corruption weakens.",
+				"Life returns to the soil.",
+				"Hope blooms again."
+			],
+			'cleansed': [
+				"The land forgives.",
+				"The land breathes freely.",
+				"And this time, it is not alone."
+			]
+		}
+		
+		if stage in dialogues:
+			self.pending_dialogue = dialogues[stage]
+
+	def apply_cleansed_stage_effects(self):
+		"""Apply special effects when reaching cleansed stage"""
+		if self.cleanse_stage == 'cleansed':
+			# Place permanent ward in center of map
+			center_x = self.corruption_spread.map_width // 2
+			center_y = self.corruption_spread.map_height // 2
+			
+			# Create mega ward with map-wide radius
+			map_radius = max(self.corruption_spread.map_width, self.corruption_spread.map_height)
+			self.ward_system.place_mega_ward(center_x, center_y, map_radius)
+			
+			# Disable corruption spread notifications
+			self.corruption_spread.notifications_enabled = False
 
 	def create_soil_grid(self, map_path=None):
 		"""Create soil grid from the Farmable layer in the specified map"""
@@ -831,7 +889,6 @@ class Level:
 		# Player should sleep at night (after 11 PM or before 6 AM) to avoid penalty
 		if 6 <= self.time_system.hour < 23:
 			self.corruption_spread.punish_day_sleep()
-			print(f"⚠️ Slept during daytime (hour {self.time_system.hour}) - corruption penalty applied!")
 
 		# soil
 		self.soil_layer.remove_water()
@@ -881,19 +938,17 @@ class Level:
 					'gold': '⭐ Gold!',
 					'mythical': '💎 MYTHICAL!'
 				}
-				if plant.quality != 'standard':
-					print(f"🌟 Harvested {plant.plant_type}: {quality_text[plant.quality]}")
 
 				# Update quest progress
 				self.quest_manager.on_harvest(plant.plant_type)
 
 				# Add cleanse points
 				cleanse_values = {
-					'corn': 5,
-					'tomato': 8,
-					'moon_melon': 12,
-					'pumpkin': 10,
-					'cactus': 10
+					'corn': 100,
+					'tomato': 100,
+					'moon_melon': 100,
+					'pumpkin': 100,
+					'cactus': 100
 				}
 				points = cleanse_values.get(plant.plant_type, 5)
 				self.add_cleanse_points(points)
@@ -966,6 +1021,12 @@ class Level:
 		if self.pause_active:
 			# let the pause menu handle its events and drawing (use filtered events)
 			self.pause.update(filtered_events)
+		elif self.stage_cutscene:
+			# Stage cutscene is playing
+			if self.stage_cutscene.run(dt, filtered_events):
+				# Cutscene finished
+				self.stage_cutscene.cleanup()
+				self.stage_cutscene = None
 		elif self.shop_active:
 			self.trader_menu.update(dt)
 			self.trader_menu.handle_input(filtered_events)
@@ -985,6 +1046,15 @@ class Level:
 			if self.corruption_spread:
 				self.corruption_spread.update(dt, self.soil_layer, self.player, self.health_system, self.ward_system)
 
+		# Check for pending cutscene
+		if self.pending_cutscene_stage and not self.stage_cutscene:
+			self.stage_cutscene = StageCutscene(self.pending_cutscene_stage)
+			self.pending_cutscene_stage = None
+
+		# Show intro cutscene on first frame
+		if not self.has_shown_intro and not self.stage_cutscene:
+			self.has_shown_intro = True
+			self.stage_cutscene = StageCutscene('corrupted')
 
 		# weather
 		if hasattr(self, 'player'):

@@ -31,6 +31,7 @@ class CorruptionSpread:
         self.notification_timer = 0
         self.notification_duration = 3.0  # Show for 3 seconds
         self.last_spread_count = 0
+        self.notifications_enabled = True
         
         # Create subtle corrupted tile that blends with ground
         self.corruption_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
@@ -101,7 +102,6 @@ class CorruptionSpread:
         
         # Check if tile is protected by ward
         if ward_system and ward_system.is_tile_protected(grid_x, grid_y):
-            print(f"🛡️ Tile ({grid_x}, {grid_y}) protected by ward!")
             return
         
         # Don't add if already corrupted
@@ -122,13 +122,8 @@ class CorruptionSpread:
             z=LAYERS['main'] + 0.7  # Draw ABOVE everything including player
         )
         except Exception as e:
-            print(f"❌ Failed to create corruption sprite: {e}")
             self.corrupted_tiles.remove((grid_x, grid_y))
             return
-        
-        # Reduce console spam - only print every 10th tile
-        if len(self.corrupted_tiles) % 10 == 0:
-            print(f"🦠 Corruption count: {len(self.corrupted_tiles)} tiles")
     
     def spread_corruption(self, num_tiles=None, ward_system=None):
         """Spread corruption to random tiles"""
@@ -151,7 +146,6 @@ class CorruptionSpread:
 
             # Safety check - if map is nearly full, stop spreading
             if len(self.corrupted_tiles) >= (self.map_width * self.map_height * 0.8):
-                print("⚠️ Map is 80% corrupted, stopping spread")
                 return
 
             # Pick a random corrupted tile to spread from
@@ -253,13 +247,9 @@ class CorruptionSpread:
             # Destroy plant
             plant.kill()
             destroyed_count += 1
-        
-        if destroyed_count > 0:
-            print(f"🦠 Corruption destroyed {destroyed_count} crops")
     
     def punish_day_sleep(self):
         """Spread extra corruption when player sleeps during day"""
-        print(f"⚠️ Day sleep punishment: {self.day_sleep_punishment} extra corrupted tiles!")
         self.spread_corruption(self.day_sleep_punishment)
     
     def is_player_on_corruption(self, player_rect):
@@ -272,7 +262,6 @@ class CorruptionSpread:
         """Damage player if on corrupted tile"""
         self.damage_timer += self.damage_interval
         player_health_system.take_damage(self.damage_per_second)
-        print(f"💔 Player damaged by corruption! Health: {player_health_system.current_health}")
     
     def update(self, dt, soil_layer=None, player=None, player_health=None, ward_system=None):
         """Update corruption spread"""
@@ -319,7 +308,7 @@ class CorruptionSpread:
 
     def draw_spread_notification(self):
         """Draw notification when corruption spreads"""
-        if not self.show_spread_notification:
+        if not self.show_spread_notification or not self.notifications_enabled:  # ADD this check
             return
         
         # Calculate fade based on timer
@@ -399,7 +388,6 @@ class CorruptionSpread:
         self.corrupted_tiles.clear()
         for sprite in self.corrupted_sprites.sprites():
             sprite.kill()
-        print("✨ All corruption cleared!")
     
     def get_corruption_count(self):
         """Get number of corrupted tiles"""

@@ -14,7 +14,7 @@ class CorruptionSurge:
         self.close_button_rect = None
 
         # Surge settings
-        self.surge_chance = 0.2  # 100% for testing (change to 0.2 for 20%)
+        self.surge_chance = 0.20  # 100% for testing (change to 0.2 for 20%)
         self.surge_triggered = False
         self.surge_happened_today = False
         
@@ -56,13 +56,7 @@ class CorruptionSurge:
     
     def try_trigger_surge(self, current_hour, current_day):
         """Try to trigger surge at specific hour (called by time system)"""
-        # Only trigger from day 4 onwards
-        if current_day < 4:
-            return False
-        
-        # Only trigger once per day
-        if self.surge_happened_today or self.surge_triggered:
-            return False
+        # Can trigger from day 1 onwards
         
         # Only trigger during daytime (8 AM to 6 PM)
         if not (8 <= current_hour <= 18):

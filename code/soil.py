@@ -30,11 +30,11 @@ class Plant(pygame.sprite.Sprite):
 
 		# Time-based growing (in seconds)
 		self.growth_times = {
-			'corn': 60,        # 1 minute
-			'tomato': 90,      # 1.5 minutes
-			'moon_melon': 120, # 2 minutes
-			'pumpkin': 120,    # 2 minutes
-			'cactus': 180      # 3 minutes
+			'corn': 1,        # 1 minute
+			'tomato': 1,      # 1.5 minutes
+			'moon_melon': 1, # 2 minutes
+			'pumpkin': 1,    # 2 minutes
+			'cactus': 1      # 3 minutes
 		}
 		
 		self.total_grow_time = self.growth_times.get(plant_type, 60)
@@ -86,8 +86,8 @@ class Plant(pygame.sprite.Sprite):
 					self.z = LAYERS['main']
 					self.hitbox = self.rect.copy().inflate(-26,-self.rect.height * 0.4)
 			
-			# Check if fully grown
-			if self.current_grow_time >= self.total_grow_time:
+			# Check if fully grown (must be at max age)
+			if self.current_grow_time >= self.total_grow_time and self.age >= self.max_age:
 				self.harvestable = True
 				
 				# Determine quality when fully grown (only once)
@@ -330,3 +330,76 @@ class SoilLayer:
 						pos = (index_col * TILE_SIZE,index_row * TILE_SIZE), 
 						surf = self.soil_surfs[tile_type], 
 						groups = [self.all_sprites, self.soil_sprites])
+					
+	def restore_plants(self, saved_plants, saved_grid):
+		"""Restore plants after stage transition"""
+		print(f"🌱 Restoring {len(saved_plants)} plants...")
+		
+		# Restore grid state
+		for y in range(len(self.grid)):
+			for x in range(len(self.grid[0])):
+				if y < len(saved_grid) and x < len(saved_grid[0]):
+					# Restore 'X' (tilled) and 'W' (watered) states
+					if 'X' in saved_grid[y][x] and 'X' not in self.grid[y][x]:
+						self.grid[y][x].append('X')
+					if 'W' in saved_grid[y][x] and 'W' not in self.grid[y][x]:
+						self.grid[y][x].append('W')
+		
+		# Recreate soil tiles
+		self.create_soil_tiles()
+		
+		# Recreate water tiles
+		for y in range(len(self.grid)):
+			for x in range(len(self.grid[0])):
+				if 'W' in self.grid[y][x]:
+					from random import choice
+					pos = (x * TILE_SIZE, y * TILE_SIZE)
+					WaterTile(pos, choice(self.water_surfs), [self.all_sprites, self.water_sprites])
+		
+		# Restore plants
+		restored_count = 0
+		for plant_data in saved_plants:
+			grid_x, grid_y = plant_data['pos']
+			
+			# Verify position is valid
+			if not (0 <= grid_y < len(self.grid) and 0 <= grid_x < len(self.grid[0])):
+				continue
+			
+			# Find soil sprite at this position
+			soil_sprite = None
+			for sprite in self.soil_sprites.sprites():
+				if sprite.rect.x // TILE_SIZE == grid_x and sprite.rect.y // TILE_SIZE == grid_y:
+					soil_sprite = sprite
+					break
+			
+			if soil_sprite:
+				# Mark as planted
+				if 'P' not in self.grid[grid_y][grid_x]:
+					self.grid[grid_y][grid_x].append('P')
+				
+				# Create plant
+				plant = Plant(
+					plant_data['plant_type'],
+					[self.all_sprites, self.plant_sprites, self.collision_sprites],
+					soil_sprite,
+					self.check_watered
+				)
+				
+				# Restore plant state
+				plant.age = plant_data['age']
+				plant.current_grow_time = plant_data.get('current_grow_time', 0)
+				plant.harvestable = plant_data.get('harvestable', False)
+				plant.quality = plant_data.get('quality', 'standard')
+				
+				# Update visual
+				plant.image = plant.frames[plant.age]
+				plant.rect = plant.image.get_rect(
+					midbottom=soil_sprite.rect.midbottom + pygame.math.Vector2(0, plant.y_offset)
+				)
+				
+				if plant.age > 0:
+					plant.z = LAYERS['main']
+				
+				restored_count += 1
+		
+		print(f"✅ Restored {restored_count} plants successfully!")

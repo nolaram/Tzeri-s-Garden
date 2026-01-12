@@ -36,7 +36,7 @@ class PauseMenu:
 			"Controls:",
 			"Move: Arrow keys or WASD",
 			"Use tool: Mouse Left Click / Space",
-			"Use seed: Left Ctrl",
+			"Use seed: Left Ctrl / Mouse Right Click",
 			"Change tool: Q / Change seed: E",
 			"Interact / Enter bed / Talk: Enter",
 			"Pause: ESC",

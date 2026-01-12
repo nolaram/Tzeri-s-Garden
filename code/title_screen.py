@@ -29,7 +29,7 @@ class TitleScreen:
         self.fade_speed = 400  # alpha per second
 
         # title music (use user-provided file at audio/title_music.mp3)
-        self.music_path = Path('audio/title_music.mp3')
+        self.music_path = Path('audio/intro_cutscene.mp3')
         if not self.music_path.exists():
             print(f"Title music not found: {self.music_path}")
             self.music = None

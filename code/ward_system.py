@@ -69,6 +69,19 @@ class WardSystem:
             print(f"✨ Ward cleared {cleared_count} corruption tiles!")
         
         return True
+    
+    def place_mega_ward(self, grid_x, grid_y, radius):
+        """Place a permanent mega ward (for cleansed stage)"""
+        pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
+        ward = Ward(pos, [self.all_sprites, self.ward_sprites])
+        ward.protection_radius = radius  # Override with mega radius
+        print(f"🛡️ MEGA WARD placed at ({grid_x}, {grid_y}) with radius {radius}!")
+        
+        # Clear ALL corruption
+        if hasattr(self, 'corruption_spread_ref') and self.corruption_spread_ref:
+            self.corruption_spread_ref.clear_all_corruption()
+        
+        return True
         
     def get_all_protected_tiles(self):
         """Get all tiles protected by wards"""

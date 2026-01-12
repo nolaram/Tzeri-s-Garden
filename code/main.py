@@ -1,6 +1,6 @@
 from title_screen import TitleScreen
 from level import Level
-from intro_cutscene import IntroCutscene  # Add this import
+from intro_cutscene import IntroCutscene
 import pygame
 from settings import *
 
@@ -11,9 +11,9 @@ class Game:
 		pygame.display.set_caption('Tzeri\'s Garden')
 		self.clock = pygame.time.Clock()
 		
-		self.state = 'title'  # States: 'title', 'cutscene', 'playing'
-		self.title_screen = TitleScreen()
-		self.intro_cutscene = None
+		self.state = 'intro'  # States: 'intro', 'title', 'playing'
+		self.intro_cutscene = IntroCutscene('intro')
+		self.title_screen = None
 		self.level = None
 
 	def run(self):
@@ -27,20 +27,21 @@ class Game:
 					pygame.quit()
 					exit()
 			
-			if self.state == 'title':
+			if self.state == 'intro':
+				if self.intro_cutscene.run(dt, events):
+					# Intro finished, show title
+					self.state = 'title'
+					self.title_screen = TitleScreen()
+			
+			elif self.state == 'title':
 				result = self.title_screen.run(dt, events)
 				if result == 'start':
-					self.state = 'cutscene'
-					self.intro_cutscene = IntroCutscene()
+					# Title finished, start game
+					self.state = 'playing'
+					self.level = Level()
 				elif result == 'quit':
 					pygame.quit()
 					exit()
-			
-			elif self.state == 'cutscene':
-				if self.intro_cutscene.run(dt, events):
-					# Cutscene finished, start game
-					self.state = 'playing'
-					self.level = Level()
 			
 			elif self.state == 'playing':
 				if self.level:
