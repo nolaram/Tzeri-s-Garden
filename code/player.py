@@ -106,23 +106,27 @@ class Player(pygame.sprite.Sprite):
 
 	def get_target_pos(self):
 		# added logic for target to follow mouse when using mouse. If gamit space, target is infront of character
-		if pygame.mouse.get_pressed()[0]:
-			player_pos = pygame.math.Vector2(self.rect.center)
-			mouse_world_pos = pygame.mouse.get_pos() + self.offset
-			
-			
-			distance = player_pos.distance_to(mouse_world_pos)
-			if distance <= PLAYER_REACH_LIMIT:
+			if any(pygame.mouse.get_pressed()) or self.timers['tool use'].active:
+				player_pos = pygame.math.Vector2(self.rect.center)
+				corrected_mouse = pygame.mouse.get_pos() - pygame.math.Vector2(5,5)
+				mouse_world_pos = corrected_mouse + self.offset
+		
+				distance = player_pos.distance_to(mouse_world_pos)
+
+
+				if distance <= PLAYER_REACH_LIMIT:
 				# for within range: hit exactly where mouse is nigga
-				self.target_pos = mouse_world_pos
+					self.target_pos = mouse_world_pos
+				else:
+					# kapag out of range, calculate a point on the line towards the mouse
+					# capped sa reach limit	
+					direction_vec = (mouse_world_pos - player_pos).normalize()
+					self.target_pos = player_pos + (direction_vec * PLAYER_REACH_LIMIT)
 			else:
-				# kapag out of range, calculate a point on the line towards the mouse
-				# capped sa reach limit	
-				direction_vec = (mouse_world_pos - player_pos).normalize()
-				self.target_pos = player_pos + (direction_vec * PLAYER_REACH_LIMIT)
-		else:
-			# keep keyboard logic
-			self.target_pos = self.rect.center + PLAYER_TOOL_OFFSET[self.status.split('_')[0]]
+				if self.direction.magnitude() > 0:
+					self.target_pos = self.rect.center + (self.direction.normalize() * PLAYER_REACH_LIMIT)
+				else:
+					self.target_pos = self.rect.center + PLAYER_TOOL_OFFSET[self.status.split('_')[0]]
 
 	def use_seed(self):
 		if self.seed_inventory[self.selected_seed] > 0:
@@ -207,10 +211,11 @@ class Player(pygame.sprite.Sprite):
 						use_tool = True
 
 				if use_tool:
-					self.timers['tool use'].activate()
-					self.direction = pygame.math.Vector2()
-					self.frame_index = 0
-					self.get_target_pos()
+					if not self.timers['tool use'].active:
+						self.timers['tool use'].activate()
+						self.direction = pygame.math.Vector2()
+						self.frame_index = 0
+						self.get_target_pos()
 
 			# change tool
 			if keys[pygame.K_q] and not self.timers['tool switch'].active:
@@ -297,7 +302,8 @@ class Player(pygame.sprite.Sprite):
 		self.input()
 		self.get_status()
 		self.update_timers()
-		self.get_target_pos()
+		if not self.timers['tool use'].active and not self.timers['seed use'].active:
+			self.get_target_pos()
 
 		self.move(dt)
 		self.animate(dt)
