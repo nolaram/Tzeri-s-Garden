@@ -1013,11 +1013,11 @@ class Level:
 
 				# Add cleanse points
 				cleanse_values = {
-					'corn': 100,
-					'tomato': 100,
-					'moon_melon': 100,
-					'pumpkin': 100,
-					'cactus': 100
+					'corn': 5,
+					'tomato': 8,
+					'moon_melon': 15,
+					'pumpkin': 20,
+					'cactus': 30
 				}
 				points = cleanse_values.get(plant.plant_type, 5)
 				self.add_cleanse_points(points)
