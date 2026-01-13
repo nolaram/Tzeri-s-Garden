@@ -184,7 +184,11 @@ class CorruptionSpread:
                         break
 
                     attempts += 1
-   
+
+       
+            
+        return True
+    
     def remove_corrupted_tile(self, grid_x, grid_y):
         """Remove a corrupted tile"""
         if (grid_x, grid_y) in self.corrupted_tiles:

@@ -1,5 +1,5 @@
 from operator import pos
-import pygame 
+import pygame, math
 from settings import *
 from player import Player
 from overlay import Overlay
@@ -991,20 +991,26 @@ class Level:
 				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
 
 	def run(self, dt, events):
-
-		if not self.dog_spawned and self.time_system.day >= 1:    
-				spawn_pos = (self.player.rect.centerx + 100, self.player.rect.centery)    
-				self.dog = DogNPC(
+    # Spawn dog once on day 1
+		if not self.dog_spawned and self.time_system.day >= 1:
+			spawn_pos = (self.player.rect.centerx + 100, self.player.rect.centery)    
+			self.dog = DogNPC(
 				pos=spawn_pos,
 				groups=[],
 				collision_sprites=self.collision_sprites,        
 				corruption_system=self.corruption_spread
-				)
-				self.dog_spawned = True
-				print("🐕 Dog has appeared!")
+			)
+			
+			# Connect dog to corruption system
+			self.corruption_spread.dog_npc = self.dog
+			
+			# Set flag to prevent re-spawning
+			self.dog_spawned = True
+			
+			print("🐕 Dog has appeared!")
+    
 
-		if self.dog:
-			self.dog.update(dt, self.player)
+		
 
 		# handle events and consume ESC that opens the pause menu so it doesn't immediately close
 		filtered_events = []
@@ -1051,6 +1057,16 @@ class Level:
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_F9:
 				self.quick_load()
 				continue
+
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_RETURN:
+					if hasattr(self, 'dog') and self.dog:
+						distance = self.player.rect.center
+						dog_pos = self.dog.rect.center
+						dist = math.sqrt((distance[0]-dog_pos[0])**2 + (distance[1]-dog_pos[1])**2)
+
+						if dist < 60:
+							self.dog.toggle_sit()
 			
 			
 			if event.type == pygame.KEYDOWN and event.key == pygame.K_f and self.dog:    
@@ -1088,6 +1104,8 @@ class Level:
 			self.display_surface.blit(self.dog.image, dog_screen_pos)
 
 
+		if hasattr(self, 'dog') and self.dog:
+			self.dog.draw_ward_effect(self.all_sprites.offset)
 
 
 

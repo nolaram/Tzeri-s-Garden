@@ -31,6 +31,17 @@ class DogNPC(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.z = LAYERS['main']
         self.hitbox = self.rect.copy().inflate(-20, -10)
+
+        self.is_sitting = False
+        self.is_sleeping = False
+        self.sleep_location = None
+        self.sleep_timer = 0
+        self.sleep_decision_cooldown = 0
+        self.sleep_decision_interval = 15.0  # Check every 2 minutes if should sleep
+        
+        self.ward_active = False
+        self.ward_radius = 4  # Same as regular ward
+        self.ward_pulse_timer = 0
         
         # ==================== REFERENCES ====================
         self.collision_sprites = collision_sprites
@@ -54,7 +65,7 @@ class DogNPC(pygame.sprite.Sprite):
             'following': {
                 'speed_multiplier': 1.2,
                 'path_update_interval': 0.5,  # Update more frequently when following
-                'follow_distance': 100  # Stay within 100 pixels of player
+                'follow_distance': 200  # Stay within 100 pixels of player
             },
             'circling': {
                 'speed_multiplier': 0.8,
@@ -64,9 +75,20 @@ class DogNPC(pygame.sprite.Sprite):
             'idle': {
                 'speed_multiplier': 0.0,
                 'idle_duration': 2.0
+            },
+            'sitting': {
+                'speed_multiplier': 0.0,
+                'sleep_duration': 60.0
+            },
+            'going_to_sleep': {
+                'speed_multiplier': 1.0,  
+                'path_update_interval': 1.0,
+            },
+            'sleeping': {  # ADD THIS TOO
+            'speed_multiplier': 0.0,
+            'sleep_duration': 60.0
             }
         }
-        
         self.current_behavior = 'wandering'
         self.behavior_timer = 0
         
@@ -149,6 +171,8 @@ class DogNPC(pygame.sprite.Sprite):
             'idle_down': [],
             'idle_left': [],
             'idle_right': [],
+            'sitting': [],
+            'sleeping': [],
         }
         
         try:
@@ -225,23 +249,37 @@ class DogNPC(pygame.sprite.Sprite):
         return sprite
     
     def animate(self, dt):
+
+        animation_speed = 3
     # Check if dog is moving
-        is_moving = self.direction.magnitude() > 0.1
-        
-        if is_moving:
-            # Moving: cycle through movement animation
-            anim_key = self.status
-            animation_speed = 6  # Fast running animation
-        else:
-            # Idle: cycle through idle animation (tail wagging)
-            anim_key = f'idle_{self.status}'
-            animation_speed = 3  # Slower tail wagging animation
-            
-            # Fallback if idle animation doesn't exist
-            if anim_key not in self.animations or len(self.animations[anim_key]) == 0:
+        if self.is_sleeping:
+            anim_key = 'sleeping'
+            animation_speed = 1.5
+        elif self.is_sitting:
+            anim_key = 'sitting'
+            animation_speed = 2
+
+        else: 
+            is_moving = self.direction.magnitude() > 0.1
+
+            if is_moving:
+                # Moving: cycle through movement animation
                 anim_key = self.status
-                animation_speed = 1  # Very slow if using movement frames
-        
+                animation_speed = 6  # Fast running animation
+            else:
+            # Idle: cycle through idle animation (tail wagging)
+                anim_key = f'idle_{self.status}'
+                animation_speed = 3  # Slower tail wagging animation
+            
+                # Fallback if idle animation doesn't exist
+                if anim_key not in self.animations or len(self.animations[anim_key]) == 0:
+                    anim_key = self.status
+                    animation_speed = 1  # Very slow if using movement frames
+
+        if anim_key not in self.animations or len(self.animations[anim_key]) == 0:
+            anim_key = 'down'  # Ultimate fallback
+            animation_speed = 3
+
         # Reset frame index if switching animations or if out of bounds
         if not hasattr(self, 'current_animation') or self.current_animation != anim_key:
             self.frame_index = 0
@@ -251,12 +289,10 @@ class DogNPC(pygame.sprite.Sprite):
         self.frame_index += animation_speed * dt
         
         # Check if animation exists and has frames
-        if anim_key in self.animations and len(self.animations[anim_key]) > 0:
-            # Wrap frame index
-            if self.frame_index >= len(self.animations[anim_key]):
-                self.frame_index = 0
+        if self.frame_index >= len(self.animations[anim_key]):
+            self.frame_index = 0
             
-            self.image = self.animations[anim_key][int(self.frame_index)]
+        self.image = self.animations[anim_key][int(self.frame_index)]
 
         
     def get_status(self):
@@ -570,10 +606,10 @@ class DogNPC(pygame.sprite.Sprite):
     
     # ==================== BEHAVIOR SYSTEM ====================
     def update_behavior(self, player, dt):
-        """
-        Update dog behavior based on current state
-        Uses hash map to lookup behavior properties
-        """
+        #"""
+        #Update dog behavior based on current state
+        #Uses hash map to lookup behavior properties
+        #"""
         self.behavior_timer += dt
         
         # Get current behavior properties from hash map (O(1) lookup)
@@ -587,10 +623,61 @@ class DogNPC(pygame.sprite.Sprite):
         
         elif self.current_behavior == 'circling':
             self.update_circling(player, dt, behavior_props)
-        
+
         elif self.current_behavior == 'idle':
             self.update_idle(dt, behavior_props)
     
+        elif self.current_behavior == 'sitting':
+            self.update_sitting(dt)
+        
+        elif self.current_behavior == 'going_to_sleep':
+            self.update_going_to_sleep(dt)
+        
+        elif self.current_behavior == 'sleeping':
+            self.update_sleeping(dt, behavior_props)
+
+        if self.is_befriended and not self.is_sleeping and not self.is_sitting:
+            if self.current_behavior != 'going_to_sleep':
+                self.sleep_decision_cooldown += dt
+                if self.sleep_decision_cooldown >= self.sleep_decision_interval:
+                    self.sleep_decision_cooldown = 0
+                    if randint(1, 100) <= 80:
+                        print("🐕 Dog decided it's time to sleep!")
+                        self.start_sleeping()
+                           
+                        
+
+
+    def update_sitting(self, dt):
+        self.direction = pygame.math.Vector2(0, 0)
+        self.current_path = []
+        
+    def update_going_to_sleep(self, dt):
+    # Check if reached sleep location
+        if self.sleep_location:
+            distance = self.pos.distance_to(self.sleep_location)
+            if int(pygame.time.get_ticks() / 2000) % 2 == 0:
+                print(f"🐕 Going to sleep... Distance: {distance:.1f}")
+            if distance < 20:
+                print("🐕 Arrived at sleep location!")
+                self.arrive_at_sleep_location()
+
+    def update_sleeping(self, dt, behavior_props):
+        self.direction = pygame.math.Vector2(0, 0)
+        self.sleep_timer += dt          
+
+        self.ward_pulse_timer += dt
+        if self.sleep_timer >= behavior_props.get('sleep_duration', 60.0):
+            self.wake_up()
+
+    def wake_up(self):
+
+        self.is_sleeping = False
+        self.ward_active = False
+        self.current_behavior = 'following'
+        self.sleep_timer = 0
+        print("🐕 Dog woke up!")
+
     def update_wandering(self, dt, behavior_props):
         """Random exploration behavior"""
         # Update path periodically
@@ -728,53 +815,67 @@ class DogNPC(pygame.sprite.Sprite):
         self.update_behavior(player, dt)
         
         # Follow path if in wandering/following mode
-        if self.current_behavior in ['wandering', 'following']:
+        if self.current_behavior in ['wandering', 'following', 'going_to_sleep']:
             self.follow_path(dt)
         
         self.get_status()
-        # Move
-        self.move(dt)
+       
+        if not self.is_sitting and not self.is_sleeping:
+            self.move(dt)
+
         
         # Simple animation (bounce)
         self.animate(dt)
     
     def draw_interaction_prompt(self, camera_offset, player):
-        """Draw 'Press F to Feed' prompt when player is near"""
-        if not self.can_feed(player):
+        
+        distance = self.pos.distance_to(pygame.math.Vector2(player.rect.center))
+
+        if distance > self.interaction_range:
             return
         
-        # Check if player has any crops
-        has_crops = False
-        for crop, amount in player.item_inventory.items():
-            if crop in ['corn', 'tomato', 'moon_melon', 'pumpkin', 'cactus'] and amount > 0:
-                has_crops = True
-                break
-        
-        if not has_crops:
-            return
-        
-        # Draw prompt above dog
         font = pygame.font.Font('font/LycheeSoda.ttf', 16)
-        
-        if not self.is_befriended:
-            text = f"Press F to Feed ({self.feed_count}/{self.max_feeds_to_befriend})"
-        else:
-            text = "Press F to Feed"
-        
+
+        # Feeding prompt
+        if self.can_feed(player):
+            has_crops = False
+            for crop, amount in player.item_inventory.items():
+                if crop in ['corn','pumpkin'] and amount > 0:
+                    has_crops = True
+                    break
+
+            if has_crops:
+                if not self.is_befriended:
+                    text = f"Press F to Feed ({self.feed_count}/{self.max_feeds_to_befriend})"
+                else:
+                    text = "Press F to Feed"
+
+                self.draw_prompt(text, camera_offset, -20)
+
+            
+
+        if self.is_befriended and not self.is_sleeping:
+            if self.is_sitting:
+                text = "Press RETURN to Stand"
+            else:
+                text = "Press RETURN to Sit"
+            
+            self.draw_prompt(text, camera_offset, -40)
+            
+    def draw_prompt(self, text, camera_offset, y_offset):
+        font = pygame.font.Font('font/LycheeSoda.ttf', 16)
         text_surf = font.render(text, True, (255, 255, 255))
         text_rect = text_surf.get_rect(
-            center=(self.rect.centerx - camera_offset.x, self.rect.top - 20 - camera_offset.y)
+            center=(self.rect.centerx - camera_offset.x, self.rect.top + y_offset - camera_offset.y)
         )
         
-        # Background
         bg_rect = text_rect.inflate(10, 4)
         pygame.draw.rect(self.display_surface, (0, 0, 0), bg_rect, border_radius=4)
         pygame.draw.rect(self.display_surface, (255, 255, 255), bg_rect, 2, border_radius=4)
         
         self.display_surface.blit(text_surf, text_rect)
-    
+        
     def draw_path_debug(self, camera_offset):
-        """Draw pathfinding debug visualization (optional)"""
         if not self.current_path:
             return
         
@@ -799,3 +900,240 @@ class DogNPC(pygame.sprite.Sprite):
             
             color = (0, 255, 0) if i == self.path_index else (100, 200, 255)
             pygame.draw.circle(self.display_surface, color, screen_pos, 4)
+    def toggle_sit(self):
+    
+        if not self.is_befriended:
+            print("🐕 Dog is not befriended yet!")
+            return False
+        
+        if self.is_sleeping:
+            print("🐕 Dog is sleeping, can't sit!")
+            return False
+        
+        if self.is_sitting:
+            # Stand up
+            self.is_sitting = False
+            self.current_behavior = 'following'
+            print("🐕 Dog stood up!")
+        else:
+            # Sit down
+            self.is_sitting = True
+            self.current_behavior = 'sitting'
+            self.direction = pygame.math.Vector2(0, 0)
+            self.current_path = []
+            print("🐕 Dog sat down!")
+        
+        return True
+    
+    def decide_sleep_location(self):
+   
+        print("🤔 Dog is deciding where to sleep...")
+        
+        # Try multiple candidates and score them
+        candidates = []
+        max_attempts = 20
+        
+        for _ in range(max_attempts):
+            # Generate random position near spawn
+            offset_x = randint(-300, 300)
+            offset_y = randint(-300, 300)
+            candidate_pos = self.spawn_pos + pygame.math.Vector2(offset_x, offset_y)
+            
+            grid_x = int(candidate_pos.x // TILE_SIZE)
+            grid_y = int(candidate_pos.y // TILE_SIZE)
+            
+            # Check if tile is valid
+            if not self.is_tile_walkable(grid_x, grid_y):
+                continue
+            
+            # Score this location
+            score = self.score_sleep_location(grid_x, grid_y)
+            candidates.append({
+                'pos': candidate_pos,
+                'grid': (grid_x, grid_y),
+                'score': score
+            })
+        
+        if not candidates:
+            print("❌ No valid sleep locations found!")
+            return None
+        
+        # Choose best location (highest score)
+        best_candidate = max(candidates, key=lambda x: x['score'])
+        
+        print(f"✅ Dog chose sleep location at {best_candidate['grid']} (score: {best_candidate['score']:.2f})")
+        return best_candidate['pos']
+
+    def score_sleep_location(self, grid_x, grid_y):
+        
+        score = 0.0
+        
+        # Factor 1: Distance from nearest corruption
+        min_corruption_dist = float('inf')
+        if hasattr(self.corruption_system, 'corrupted_tiles'):
+            for corrupt_tile in self.corruption_system.corrupted_tiles:
+                dist = abs(grid_x - corrupt_tile[0]) + abs(grid_y - corrupt_tile[1])
+                min_corruption_dist = min(min_corruption_dist, dist)
+        
+        if min_corruption_dist != float('inf'):
+            score += min_corruption_dist * 10  # Further from corruption = better
+        else:
+            score += 1000  # No corruption nearby = excellent
+        
+        # Factor 2: Not too far from spawn
+        dist_from_spawn = abs(grid_x - int(self.spawn_pos.x // TILE_SIZE)) + \
+                        abs(grid_y - int(self.spawn_pos.y // TILE_SIZE))
+        score -= dist_from_spawn * 2  # Penalty for being far from home
+        
+        # Factor 3: Tile safety
+        if self.is_tile_walkable(grid_x, grid_y):
+            score += 50
+        
+        return score
+    def start_sleeping(self):
+   
+        if self.is_sitting:
+            self.is_sitting = False
+        
+        # AI decides where to sleep
+        sleep_pos = self.decide_sleep_location()
+        
+        if not sleep_pos:
+            print("❌ Dog couldn't find a good place to sleep!")
+            return False
+        
+        self.sleep_location = sleep_pos
+        
+        # Path to sleep location
+        self.current_path = self.find_path_astar(self.pos, sleep_pos)
+        self.path_index = 0
+        self.current_behavior = 'going_to_sleep'
+        
+        print(f"🐕 Dog is heading to sleep at {sleep_pos}")
+        return True
+
+    def arrive_at_sleep_location(self):
+        
+        self.is_sleeping = True
+        self.current_behavior = 'sleeping'
+        self.direction = pygame.math.Vector2(0, 0)
+        self.current_path = []
+        self.sleep_timer = 0
+        
+        # Activate ward powers!
+        self.ward_active = True
+        
+        # Clear corruption in radius
+        self.clear_corruption_around_sleep()
+        
+        print("😴 Dog is now sleeping with ward active!")
+
+    def clear_corruption_around_sleep(self):
+    
+        if not self.sleep_location:
+            return
+        
+        grid_x = int(self.sleep_location.x // TILE_SIZE)
+        grid_y = int(self.sleep_location.y // TILE_SIZE)
+        
+        cleared_count = 0
+        
+        # Clear corruption in radius
+        for dx in range(-self.ward_radius, self.ward_radius + 1):
+            for dy in range(-self.ward_radius, self.ward_radius + 1):
+                tile_x = grid_x + dx
+                tile_y = grid_y + dy
+                
+                if hasattr(self.corruption_system, 'corrupted_tiles'):
+                    if (tile_x, tile_y) in self.corruption_system.corrupted_tiles:
+                        self.corruption_system.remove_corrupted_tile(tile_x, tile_y)
+                        cleared_count += 1
+        
+        if cleared_count > 0:
+            print(f"✨ Dog's ward cleared {cleared_count} corruption tiles!")
+
+    def get_protected_tiles(self):
+        
+        if not self.ward_active or not self.sleep_location:
+            return []
+        
+        grid_x = int(self.sleep_location.x // TILE_SIZE)
+        grid_y = int(self.sleep_location.y // TILE_SIZE)
+        
+        protected = []
+        for dx in range(-self.ward_radius, self.ward_radius + 1):
+            for dy in range(-self.ward_radius, self.ward_radius + 1):
+                protected.append((grid_x + dx, grid_y + dy))
+        
+        return protected
+
+    def is_tile_protected_by_dog(self, grid_x, grid_y):
+        # """Check if tile is protected by dog's ward"""
+        return (grid_x, grid_y) in self.get_protected_tiles()
+    
+    def draw_ward_effect(self, camera_offset):
+        
+        if not self.ward_active or not self.sleep_location:
+            return
+        
+        # Pulsing effect
+        pulse = abs(math.sin(self.ward_pulse_timer * 2)) * 30 + 70
+        
+        # Draw protection tiles in CIRCULAR pattern
+        grid_x = int(self.sleep_location.x // TILE_SIZE)
+        grid_y = int(self.sleep_location.y // TILE_SIZE)
+        
+        # Use actual radius for circular effect
+        for dx in range(-self.ward_radius, self.ward_radius + 1):
+            for dy in range(-self.ward_radius, self.ward_radius + 1):
+                # Calculate distance from center
+                distance = math.sqrt(dx * dx + dy * dy)
+                
+                # Only draw if within circular radius
+                if distance <= self.ward_radius:
+                    tile_x = (grid_x + dx) * TILE_SIZE
+                    tile_y = (grid_y + dy) * TILE_SIZE
+                    
+                    # Create pulsing overlay with fade based on distance
+                    overlay = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+                    
+                    # Fade alpha based on distance from center
+                    alpha_multiplier = 1 - (distance / self.ward_radius)
+                    alpha = int(pulse * alpha_multiplier * 0.6)  # 0.6 makes it less intense
+                    
+                    overlay.fill((100, 200, 255, alpha))
+                    
+                    screen_pos = (tile_x - camera_offset.x, tile_y - camera_offset.y)
+                    self.display_surface.blit(overlay, screen_pos)
+        
+        # Draw circular glow around dog (center)
+        screen_pos = (
+            int(self.rect.centerx - camera_offset.x),
+            int(self.rect.centery - camera_offset.y)
+        )
+        
+        # Draw multiple circles for smoother glow effect
+        glow_radius = int(self.ward_radius * TILE_SIZE * 0.8)  # 80% of ward radius
+        
+        # Outer glow (transparent)
+        for i in range(3):
+            radius = glow_radius - (i * 15)
+            alpha = int((pulse / 3) - (i * 20))
+            if alpha > 0 and radius > 0:
+                # Create surface for each glow layer
+                glow_surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (100, 200, 255, alpha), (radius, radius), radius)
+                
+                # Blit centered on dog
+                glow_rect = glow_surf.get_rect(center=screen_pos)
+                self.display_surface.blit(glow_surf, glow_rect)
+        
+        # Inner bright circle
+        inner_radius = int(30 + pulse / 4)
+        pygame.draw.circle(
+            self.display_surface,
+            (150, 220, 255),
+            screen_pos,
+            inner_radius,
+            3
+        )
