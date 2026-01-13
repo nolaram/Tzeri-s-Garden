@@ -16,7 +16,7 @@ class CorruptionSpread:
         # Spread settings
         self.spread_interval = 60  # Spread every 1 minute
         self.spread_timer = 0
-        self.tiles_per_spread = 2  # Spread to 2 tiles each time
+        self.tiles_per_spread = 10  # Spread to 10 tiles each time
         
         # Punishment for sleeping during day
         self.day_sleep_punishment = 10  # Extra tiles when sleeping during day

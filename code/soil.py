@@ -30,11 +30,11 @@ class Plant(pygame.sprite.Sprite):
 
 		# Time-based growing (in seconds)
 		self.growth_times = {
-			'corn': 1,        # 1 minute
-			'tomato': 1,      # 1.5 minutes
-			'moon_melon': 1, # 2 minutes
-			'pumpkin': 1,    # 2 minutes
-			'cactus': 1      # 3 minutes
+			'corn': 60,        # 1 minute
+			'tomato': 90,      # 1.5 minutes
+			'moon_melon': 120, # 2 minutes
+			'pumpkin': 120,    # 2 minutes
+			'cactus': 180      # 3 minutes
 		}
 		
 		self.total_grow_time = self.growth_times.get(plant_type, 60)
@@ -290,7 +290,9 @@ class SoilLayer:
 
 	def update_plants(self, dt):
 		for plant in self.plant_sprites.sprites():
-			plant.grow(dt)
+			# Safety check - only grow actual Plant objects
+			if hasattr(plant, 'grow'):
+				plant.grow(dt)
 
 	def create_soil_tiles(self):
 		self.soil_sprites.empty()

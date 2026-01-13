@@ -82,8 +82,8 @@ SALE_PRICES = {
 }
 PURCHASE_PRICES = {
 	'corn': 10,
-	'tomato': 40,
-    'moon_melon': 200,
-    'pumpkin': 150,
-    'cactus': 170
+	'tomato': 100,
+    'moon_melon': 250,
+    'pumpkin': 300,
+    'cactus': 500
 }
