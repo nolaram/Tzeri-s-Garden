@@ -117,7 +117,7 @@ class Level:
 		# sky
 		self.rain = Rain(self.all_sprites)
 		self.raining = randint(0,10) > 7
-		self.thunderstorm = randint(0,10) > 8
+		self.thunderstorm = randint(0,10) > -1
 		self.soil_layer.raining = self.raining or self.thunderstorm
 		self.sky = Sky()
 
@@ -1013,11 +1013,11 @@ class Level:
 
 				# Add cleanse points
 				cleanse_values = {
-					'corn': 5,
-					'tomato': 8,
-					'moon_melon': 15,
-					'pumpkin': 20,
-					'cactus': 30
+					'corn': 100,
+					'tomato': 100,
+					'moon_melon': 100,
+					'pumpkin': 100,
+					'cactus': 100
 				}
 				points = cleanse_values.get(plant.plant_type, 5)
 				self.add_cleanse_points(points)
