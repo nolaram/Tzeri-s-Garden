@@ -14,7 +14,7 @@ class CorruptionSurge:
         self.close_button_rect = None
 
         # Surge settings
-        self.surge_chance = 0.20  # 100% for testing (change to 0.2 for 20%)
+        self.surge_chance = 0.2  # 100% for testing (change to 0.2 for 20%)
         self.surge_triggered = False
         self.surge_happened_today = False
         

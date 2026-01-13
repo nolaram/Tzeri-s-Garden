@@ -102,6 +102,11 @@ class Level:
 		# Corruption surge system
 		self.corruption_surge = CorruptionSurge(self.soil_layer)
 
+		# ADD THESE LINES - Corruption surge audio
+		self.corruption_surge_sound = pygame.mixer.Sound('audio/corruption_surge.mp3')
+		self.corruption_surge_sound.set_volume(0.4)
+		self.corruption_surge_active = False
+
 		self.overlay = Overlay(self.player, show_objective=True)
 		self.transition = TransitionStack(self.reset, self.player)
 		# Quest system
@@ -111,9 +116,25 @@ class Level:
 
 		# sky
 		self.rain = Rain(self.all_sprites)
-		self.raining = randint(0,10) > 0
-		self.soil_layer.raining = self.raining
+		self.raining = randint(0,10) > 7
+		self.thunderstorm = randint(0,10) > 8
+		self.soil_layer.raining = self.raining or self.thunderstorm
 		self.sky = Sky()
+
+		# ADD THESE LINES - Weather audio
+		self.rain_sound = pygame.mixer.Sound('audio/rain.mp3')
+		self.rain_sound.set_volume(0.3)
+		self.thunderstorm_sound = pygame.mixer.Sound('audio/thunderstorm.mp3')
+		self.thunderstorm_sound.set_volume(0.4)
+		self.current_weather_sound = None
+
+		# Start weather sound if needed
+		if self.thunderstorm:
+			self.thunderstorm_sound.play(loops=-1)  # Loop forever
+			self.current_weather_sound = 'thunderstorm'
+		elif self.raining:
+			self.rain_sound.play(loops=-1)  # Loop forever
+			self.current_weather_sound = 'rain'
 
 		# shop
 		self.trader_menu = TraderMenu(self.player, self.toggle_shop)
@@ -887,6 +908,11 @@ class Level:
 		pygame.mouse.set_visible(self.pause_active)
 
 	def reset(self):
+		# Stop corruption surge sound if playing
+		if hasattr(self, 'corruption_surge_active') and self.corruption_surge_active:
+			self.corruption_surge_sound.stop()
+			self.corruption_surge_active = False
+
 		# Advance to next day
 		self.time_system.advance_to_next_day()
 		
@@ -909,9 +935,28 @@ class Level:
 
 		# soil
 		self.soil_layer.remove_water()
-		self.raining = randint(0,10) > 0
-		self.soil_layer.raining = self.raining
-		if self.raining:
+
+		# Stop current weather sound
+		if self.current_weather_sound == 'rain':
+			self.rain_sound.stop()
+		elif self.current_weather_sound == 'thunderstorm':
+			self.thunderstorm_sound.stop()
+
+		self.raining = randint(0,10) > 7
+		self.thunderstorm = randint(0,10) > 8
+		self.soil_layer.raining = self.raining or self.thunderstorm
+
+		# Start new weather sound
+		if self.thunderstorm:
+			self.thunderstorm_sound.play(loops=-1)
+			self.current_weather_sound = 'thunderstorm'
+		elif self.raining:
+			self.rain_sound.play(loops=-1)
+			self.current_weather_sound = 'rain'
+		else:
+			self.current_weather_sound = None
+
+		if self.raining or self.thunderstorm:
 			self.soil_layer.water_all()
 
 		# apples on the trees
@@ -931,10 +976,12 @@ class Level:
 			return
 
 		for plant in self.soil_layer.plant_sprites.sprites():
+			# Safety check - skip if not a Plant object
+			if not hasattr(plant, 'harvestable'):
+				continue
+			
 			# Check both rect and hitbox for collision
 			collision = plant.rect.colliderect(self.player.hitbox)
-			if hasattr(plant, 'hitbox'):
-				collision = collision or plant.hitbox.colliderect(self.player.hitbox)
 			
 			if plant.harvestable and collision:
 				
@@ -987,8 +1034,8 @@ class Level:
 					while 'P' in cell:
 						cell.remove('P')
 
-				# Spawn particle effect
-				Particle(plant.rect.topleft, plant.image, self.all_sprites, z=LAYERS['main'])
+				# Spawn particle effect (don't add to plant_sprites!)
+				Particle(plant.rect.topleft, plant.image, [self.all_sprites], z=LAYERS['main'])
 
 	def run(self, dt, events):
 
@@ -1133,6 +1180,18 @@ class Level:
 			self.energy_system.update(dt)
 			self.health_system.update(dt)
 			self.corruption_surge.update(dt)
+
+			# Corruption surge audio management
+			if self.corruption_surge.is_active():
+				if not self.corruption_surge_active:
+					# Surge just started - play sound
+					self.corruption_surge_sound.play(loops=-1)  # Loop forever
+					self.corruption_surge_active = True
+			else:
+				if self.corruption_surge_active:
+					# Surge just ended - stop sound
+					self.corruption_surge_sound.stop()
+					self.corruption_surge_active = False
 			if self.corruption_spread:
 				self.corruption_spread.update(dt, self.soil_layer, self.player, self.health_system, self.ward_system)
 
@@ -1149,9 +1208,11 @@ class Level:
 		# weather
 		if hasattr(self, 'player'):
 			self.overlay.display(dt, filtered_events)
-		if self.raining and not (self.shop_active or self.pause_active or self.inventory_active):
-			self.rain.update()
-		self.sky.display(self.time_system, self.corruption_surge)
+		if (self.raining or self.thunderstorm) and not (self.shop_active or self.pause_active or self.inventory_active):
+			self.rain.is_thunderstorm = self.thunderstorm  # ADD THIS
+			for _ in range(17 if self.thunderstorm else 1):  # CHANGE - 16x drops during thunderstorm
+				self.rain.update()
+		self.sky.display(self.time_system, self.corruption_surge, self.thunderstorm)  # ADD thunderstorm parameter
 
 		# Quest UI
 		if not self.inventory_active:
