@@ -12,6 +12,7 @@ Hash Maps provide O(1) lookup time vs O(n) for lists!
 
 import pygame
 from settings import *
+from support import import_folder
 from random import randint, choice
 import math
 
@@ -19,6 +20,11 @@ class DogNPC(pygame.sprite.Sprite):
     def __init__(self, pos, groups, collision_sprites, corruption_system):
         super().__init__(groups)
         
+        self.import_assets()
+        self.status = 'down'
+        self.frame_index = 0
+        self.current_animation = 'down'
+
         # ==================== VISUAL SETUP ====================
         # Simple dog sprite (you can replace with actual asset)
         self.image = self.create_dog_sprite()
@@ -42,7 +48,7 @@ class DogNPC(pygame.sprite.Sprite):
         self.behavior_states = {
             'wandering': {
                 'speed_multiplier': 1.0,
-                'path_update_interval': 3.0,  # Update path every 3 seconds
+                'path_update_interval': 8.0,  # Update path every 3 seconds
                 'max_distance': 500  # Max distance from spawn
             },
             'following': {
@@ -118,37 +124,157 @@ class DogNPC(pygame.sprite.Sprite):
             self.bark_sound = None
         
         print(f"🐕 Dog NPC spawned at {pos}")
-    
     def create_dog_sprite(self):
-        """Create a simple dog sprite (placeholder until you add asset)"""
-        # Create a 32x32 sprite
+    # Return the first frame of the default direction (down)
+        if 'down' in self.animations and len(self.animations['down']) > 0:
+            return self.animations['down'][0]
+        
+        # Fallback: check other directions if 'down' doesn't exist
+        for direction in ['up', 'left', 'right']:
+            if direction in self.animations and len(self.animations[direction]) > 0:
+                return self.animations[direction][0]
+        
+        # Final fallback: create a placeholder surface
+        placeholder = pygame.Surface((64, 64))
+        placeholder.fill((150, 100, 50))  # Brown color for dog
+        return placeholder
+    
+    def import_assets(self):
+        self.animations = {
+            'up': [],
+            'down': [],
+            'left': [],
+            'right': [],
+            'idle_up': [],
+            'idle_down': [],
+            'idle_left': [],
+            'idle_right': [],
+        }
+        
+        try:
+            # Load all animations from folders (both movement and idle)
+            for animation in self.animations.keys():
+                full_path = f'graphics/dog/{animation}'
+                print(f"🔍 Trying to load: {full_path}")
+                
+                try:
+                    frames = import_folder(full_path)
+                    if frames:
+                        self.animations[animation] = frames
+                        print(f"✅ Loaded {len(frames)} frames for {animation}")
+                    else:
+                        print(f"⚠️ No frames found in {full_path}")
+                        # If idle folder is empty, use first frame of movement
+                        if 'idle_' in animation:
+                            direction = animation.replace('idle_', '')
+                            if self.animations.get(direction):
+                                self.animations[animation] = [self.animations[direction][0]]
+                                print(f"📝 Using fallback for {animation}")
+                except Exception as e:
+                    print(f"❌ Error loading {full_path}: {e}")
+                    # Fallback for idle: use first frame of movement
+                    if 'idle_' in animation:
+                        direction = animation.replace('idle_', '')
+                        if direction in self.animations and self.animations[direction]:
+                            self.animations[animation] = [self.animations[direction][0]]
+            
+            print("✅ Dog animations loaded successfully!")
+            print(f"📊 Animation summary: {[(k, len(v)) for k, v in self.animations.items()]}")
+            
+        except Exception as e:
+            print(f"⚠️ Could not load dog animations: {e}")
+            print("Using fallback sprites...")
+            for direction in ['up', 'down', 'left', 'right']:
+                frames = []
+                for i in range(4):
+                    frames.append(self.create_fallback_sprite(direction, i))
+                self.animations[direction] = frames
+                self.animations[f'idle_{direction}'] = [frames[0]]
+
+    def create_fallback_sprite(self, direction, frame):
         sprite = pygame.Surface((32, 32), pygame.SRCALPHA)
-        
-        # Body (brown oval)
-        pygame.draw.ellipse(sprite, (139, 90, 43), (4, 8, 24, 16))
-        
-        # Head (brown circle)
-        pygame.draw.circle(sprite, (139, 90, 43), (16, 8), 8)
-        
-        # Ears (darker brown)
-        pygame.draw.ellipse(sprite, (101, 67, 33), (8, 2, 6, 10))
-        pygame.draw.ellipse(sprite, (101, 67, 33), (18, 2, 6, 10))
-        
-        # Eyes (black dots)
-        pygame.draw.circle(sprite, (0, 0, 0), (13, 7), 2)
-        pygame.draw.circle(sprite, (0, 0, 0), (19, 7), 2)
-        
-        # Nose (black)
-        pygame.draw.circle(sprite, (0, 0, 0), (16, 11), 2)
-        
-        # Tail (curved line)
-        pygame.draw.arc(sprite, (101, 67, 33), (20, 10, 10, 10), 0, 3.14, 3)
-        
-        # Legs (simple lines)
-        pygame.draw.line(sprite, (101, 67, 33), (10, 24), (10, 30), 3)
-        pygame.draw.line(sprite, (101, 67, 33), (22, 24), (22, 30), 3)
-        
+        base_color = 139 - (frame * 10)
+        body_color = (base_color, 90, 43)
+        pygame.draw.ellipse(sprite, body_color, (4, 8, 24, 16))   
+        pygame.draw.circle(sprite, body_color, (16, 8), 8)
+
+        if direction == 'up':
+            pygame.draw.circle(sprite, (0, 0, 0), (13, 5), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (19, 5), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (16, 3), 2)
+        elif direction == 'down':
+            pygame.draw.circle(sprite, (0, 0, 0), (13, 9), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (16, 12), 2)
+        elif direction == 'left':
+            pygame.draw.circle(sprite, (0, 0, 0), (11, 7), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (17, 7), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (8, 8), 2)
+        elif direction == 'right':
+            pygame.draw.circle(sprite, (0, 0, 0), (15, 7), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (21, 7), 2)
+            pygame.draw.circle(sprite, (0, 0, 0), (24, 8), 2)
+
+        ear_color = (101, 67, 33)
+        pygame.draw.ellipse(sprite, ear_color, (8, 2, 6, 10))
+        pygame.draw.ellipse(sprite, ear_color, (18, 2, 6, 10))
+        pygame.draw.arc(sprite, ear_color, (20, 10, 10, 10), 0, 3.14, 3)
+        leg_offset = frame % 2
+        pygame.draw.line(sprite, ear_color, (10, 24), (10 + leg_offset, 30), 3)
+        pygame.draw.line(sprite, ear_color, (22, 24), (22 - leg_offset, 30), 3)
+
         return sprite
+    
+    def animate(self, dt):
+    # Check if dog is moving
+        is_moving = self.direction.magnitude() > 0.1
+        
+        if is_moving:
+            # Moving: cycle through movement animation
+            anim_key = self.status
+            animation_speed = 6  # Fast running animation
+        else:
+            # Idle: cycle through idle animation (tail wagging)
+            anim_key = f'idle_{self.status}'
+            animation_speed = 3  # Slower tail wagging animation
+            
+            # Fallback if idle animation doesn't exist
+            if anim_key not in self.animations or len(self.animations[anim_key]) == 0:
+                anim_key = self.status
+                animation_speed = 1  # Very slow if using movement frames
+        
+        # Reset frame index if switching animations or if out of bounds
+        if not hasattr(self, 'current_animation') or self.current_animation != anim_key:
+            self.frame_index = 0
+            self.current_animation = anim_key
+        
+        # Update frame index
+        self.frame_index += animation_speed * dt
+        
+        # Check if animation exists and has frames
+        if anim_key in self.animations and len(self.animations[anim_key]) > 0:
+            # Wrap frame index
+            if self.frame_index >= len(self.animations[anim_key]):
+                self.frame_index = 0
+            
+            self.image = self.animations[anim_key][int(self.frame_index)]
+
+        
+    def get_status(self):
+        if self.direction.magnitude() == 0:
+            return
+        
+        if abs(self.direction.x) > abs(self.direction.y):
+            if self.direction.x > 0:
+                self.status = 'right'
+
+            else:
+                self.status = 'left'
+        else:
+            if self.direction.y > 0:
+                self.status = 'down'
+            else:
+                self.status = 'up'
+    
     
     def can_feed(self, player):
         """Check if player is close enough to feed"""
@@ -528,6 +654,8 @@ class DogNPC(pygame.sprite.Sprite):
     def update_idle(self, dt, behavior_props):
         """Stand still"""
         self.direction = pygame.math.Vector2(0, 0)
+        self.current_path = []
+
         
         if self.behavior_timer >= behavior_props['idle_duration']:
             # Switch back to previous behavior
@@ -566,7 +694,8 @@ class DogNPC(pygame.sprite.Sprite):
         # Move towards waypoint
         if distance > 0:
             self.direction = direction.normalize()
-    
+        else:
+            self.direftion = pygame.math.Vector2(0, 0)
     def move(self, dt):
         """Move the dog"""
         if self.direction.magnitude() > 0:
@@ -574,8 +703,10 @@ class DogNPC(pygame.sprite.Sprite):
             behavior_props = self.behavior_states[self.current_behavior]
             speed_mult = behavior_props.get('speed_multiplier', 1.0)
             
+            normalized_direction = self.direction.normalize()
+            self.pos += normalized_direction * self.speed * speed_mult * dt
+
             # Move
-            self.pos += self.direction.normalize() * self.speed * speed_mult * dt
             self.rect.center = self.pos
             self.hitbox.center = self.rect.center
     
@@ -600,14 +731,12 @@ class DogNPC(pygame.sprite.Sprite):
         if self.current_behavior in ['wandering', 'following']:
             self.follow_path(dt)
         
+        self.get_status()
         # Move
         self.move(dt)
         
         # Simple animation (bounce)
-        self.animation_timer += dt
-        if self.direction.magnitude() > 0:
-            bounce = abs(math.sin(self.animation_timer * 10)) * 2
-            self.rect.centery = self.pos.y - bounce
+        self.animate(dt)
     
     def draw_interaction_prompt(self, camera_offset, player):
         """Draw 'Press F to Feed' prompt when player is near"""
