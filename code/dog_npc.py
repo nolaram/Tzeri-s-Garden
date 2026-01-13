@@ -1,15 +1,3 @@
-"""
-DOG NPC - HASH MAP PATHFINDING IMPLEMENTATION
-==============================================
-This module demonstrates hash map (dictionary) usage for:
-1. A* pathfinding algorithm (open/closed sets as hash maps)
-2. Corruption avoidance using spatial hash lookups
-3. Behavior state management
-4. Efficient tile checking and path caching
-
-Hash Maps provide O(1) lookup time vs O(n) for lists!
-"""
-
 import pygame
 from settings import *
 from support import import_folder
@@ -653,15 +641,21 @@ class DogNPC(pygame.sprite.Sprite):
         self.current_path = []
         
     def update_going_to_sleep(self, dt):
-    # Check if reached sleep location
+        """Dog is traveling to sleep location"""
         if self.sleep_location:
             distance = self.pos.distance_to(self.sleep_location)
-            if int(pygame.time.get_ticks() / 2000) % 2 == 0:
-                print(f"🐕 Going to sleep... Distance: {distance:.1f}")
-            if distance < 20:
+            
+            # Check if arrived (either close enough OR path completed)
+            path_completed = (not self.current_path or self.path_index >= len(self.current_path))
+            
+            if distance < 50 or path_completed:  # Increased threshold to 50 pixels
                 print("🐕 Arrived at sleep location!")
                 self.arrive_at_sleep_location()
-
+            elif path_completed and distance >= 50:
+                # Path ended but not close enough - recalculate path
+                print("🐕 Path ended but not at destination, recalculating...")
+                self.current_path = self.find_path_astar(self.pos, self.sleep_location)
+                self.path_index = 0
     def update_sleeping(self, dt, behavior_props):
         self.direction = pygame.math.Vector2(0, 0)
         self.sleep_timer += dt          

@@ -23,6 +23,8 @@ class SaveLoadMenu:
         self.typing_new_name = False
         self.new_save_name = ""
         
+        self.renaming_slot = None  # Track which slot is being renamed
+        self.rename_text = ""  
         # Scroll
         self.scroll_offset = 0
         
@@ -66,7 +68,29 @@ class SaveLoadMenu:
                         # Add character (limit to 20 chars)
                         if len(self.new_save_name) < 20 and event.unicode.isprintable():
                             self.new_save_name += event.unicode
-            
+                elif self.renaming_slot is not None:
+                    if event.key == pygame.K_RETURN:
+                        if self.rename_text.strip():
+                            saves = self.save_system.get_save_files()
+                            old_name = saves[self.renaming_slot]
+                            new_name = self.rename_text.strip()
+                            
+                            # Rename the file
+                            import os
+                            old_path = f'saves/{old_name}.json'
+                            new_path = f'saves/{new_name}.json'
+                            if os.path.exists(old_path):
+                                os.rename(old_path, new_path)
+                                print(f"âœ… Renamed '{old_name}' to '{new_name}'")
+                        
+                        self.renaming_slot = None
+                        self.rename_text = ""
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.rename_text = self.rename_text[:-1]
+                    else:
+                        if len(self.rename_text) < 20 and event.unicode.isprintable():
+                            self.rename_text += event.unicode
+
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Main menu buttons
                 if self.mode == 'main':
@@ -88,8 +112,8 @@ class SaveLoadMenu:
                         # Quick save to existing slot
                         saves = self.save_system.get_save_files()
                         if 0 <= self.hovered_slot < len(saves):
-                            slot_name = saves[self.hovered_slot]
-                            self.save_game(slot_name)
+                            self.renaming_slot = self.hovered_slot
+                            self.rename_text = saves[self.hovered_slot]
                 
                 # Load menu
                 elif self.mode == 'load':
@@ -198,7 +222,24 @@ class SaveLoadMenu:
         new_text = self.font.render('+ New Save', True, (255, 255, 255))
         new_text_rect = new_text.get_rect(center=new_save_rect.center)
         self.display_surface.blit(new_text, new_text_rect)
-        
+
+        if self.renaming_slot is not None:
+            input_rect = pygame.Rect(self.x + 270, self.y + 90, 350, 50)
+            pygame.draw.rect(self.display_surface, (70, 70, 70), input_rect, border_radius=8)
+            pygame.draw.rect(self.display_surface, (255, 200, 0), input_rect, 2, border_radius=8)
+            
+            # Show current rename text
+            input_text = self.rename_text + "|"  # Cursor
+            input_surf = self.font.render(input_text, True, (255, 255, 255))
+            input_surf_rect = input_surf.get_rect(midleft=(input_rect.left + 10, input_rect.centery))
+            self.display_surface.blit(input_surf, input_surf_rect)
+            
+            # Hint
+            hint = "Renaming - Press ENTER to save, ESC to cancel"
+            hint_surf = self.small_font.render(hint, True, (200, 200, 200))
+            hint_rect = hint_surf.get_rect(center=(SCREEN_WIDTH // 2, self.y + 155))
+            self.display_surface.blit(hint_surf, hint_rect)
+                
         # Text input field if typing
         if self.typing_new_name:
             input_rect = pygame.Rect(self.x + 270, self.y + 90, 350, 50)
@@ -250,8 +291,10 @@ class SaveLoadMenu:
                 name_rect = name_surf.get_rect(midleft=(slot_rect.left + 15, slot_rect.centery - 10))
                 self.display_surface.blit(name_surf, name_rect)
                 
-                # Hint
-                hint_surf = self.small_font.render("Click to overwrite", True, (180, 180, 180))
+            
+
+                hint_text = "Click to rename" if self.renaming_slot != i else "Renaming..."
+                hint_surf = self.small_font.render(hint_text, True, (180, 180, 180))
                 hint_rect = hint_surf.get_rect(midleft=(slot_rect.left + 15, slot_rect.centery + 12))
                 self.display_surface.blit(hint_surf, hint_rect)
         
