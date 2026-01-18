@@ -1,3 +1,17 @@
+import os
+import sys
+
+# This forces the "Working Directory" to be the folder containing Tzeris_Garden.exe
+if getattr(sys, 'frozen', False):
+    os.chdir(os.path.dirname(sys.executable))
+else:
+    # If running normally, it sets the directory to the project root
+    # Adjust the '..' depending on if main.py is in a subfolder or root
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    if os.path.basename(os.getcwd()) == 'code':
+        os.chdir('..')
+
+
 from title_screen import TitleScreen
 from level import Level
 from intro_cutscene import IntroCutscene
@@ -25,7 +39,7 @@ class Game:
 			for event in events:
 				if event.type == pygame.QUIT:
 					pygame.quit()
-					exit()
+					sys.exit()
 			
 			if self.state == 'intro':
 				if self.intro_cutscene.run(dt, events):
